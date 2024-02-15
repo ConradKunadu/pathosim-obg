@@ -560,6 +560,9 @@ class Sim(cvb.BaseSim):
 
         self.people.initialize(sim_pars=self.pars, sim = self) # Fully initialize the people
         self.reset_layer_pars(force=False) # Ensure that layer keys match the loaded population
+
+        if init_infections:
+            self.init_infections(verbose=verbose)
         
         if self.pars['enable_smartwatches']:
             self.people.init_watches(self.pars['smartwatch_pars'])
