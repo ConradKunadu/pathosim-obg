@@ -136,7 +136,7 @@ def compute_trans_sus(rel_trans,  rel_sus,    inf,       sus,       beta_layer, 
     return rel_trans, rel_sus
 
 
-@nb.njit(             (nbfloat,  nbint[:],  nbint[:], nbfloat[:],   nbfloat[:], nbfloat[:], nbbool), cache=cache, parallel=rand_parallel)
+""" @nb.njit(             (nbfloat,  nbint[:],  nbint[:], nbfloat[:],   nbfloat[:], nbfloat[:], nbbool), cache=cache, parallel=rand_parallel)
 def compute_infections(beta,     p1,        p2,       layer_betas,  rel_trans,  rel_sus,    legacy=False): # pragma: no cover
     '''
     Compute who infects whom
@@ -169,6 +169,46 @@ def compute_infections(beta,     p1,        p2,       layer_betas,  rel_trans,  
         nonzero_sources  = sources[nonzero_inf_inds] # Remove zero entries from the sources
         nonzero_targets  = targets[nonzero_inf_inds] # Remove zero entries from the targets
         transmissions    = (np.random.random(len(nonzero_betas)) < nonzero_betas).nonzero()[0] # Compute the actual infections!
+        source_inds      = nonzero_sources[transmissions]
+        target_inds      = nonzero_targets[transmissions] # Filter the targets on the actual infections
+        slist = np.concatenate((slist, source_inds), axis=0)
+        tlist = np.concatenate((tlist, target_inds), axis=0)
+    return slist, tlist """
+
+def compute_infections(beta,     p1,        p2,       layer_betas, layer_draws, rel_trans,  rel_sus,    legacy=False): # pragma: no cover
+    '''
+    Compute who infects whom
+
+    The heaviest step of the model -- figure out who gets infected on this timestep.
+    Cannot be easily parallelized since random numbers are used. Loops over contacts
+    in both directions (i.e., targets become sources).
+
+    Args:
+        beta: overall transmissibility
+        p1: person 1
+        p2: person 2
+        layer_betas: per-contact transmissibilities
+        rel_trans: the source's relative transmissibility
+        rel_sus: the target's relative susceptibility
+        legacy: whether to use the slower legacy (pre 3.1.1) calculation method
+    '''
+    slist = np.empty(0, dtype = np.int32)
+    tlist = np.empty(0, dtype = np.int32)
+    pairs = [[p1,p2,layer_draws[0]], [p2,p1,layer_draws[1]]] if not legacy else [[p1,p2]]
+    for sources,targets,draws in pairs:
+        source_trans     = rel_trans[sources] # Pull out the transmissibility of the sources (0 for non-infectious people). Cx1 array. 
+        inf_inds         = source_trans.nonzero()[0] # Infectious indices -- remove noninfectious people. Smaller array of the non-zero inds.
+        # betas: I x 1 array, I is # contacts where P1 is infectious. 
+        betas            = beta * layer_betas[inf_inds] * source_trans[inf_inds] * rel_sus[targets[inf_inds]] # Calculate the raw transmission probabilities
+        draws            = draws[inf_inds]
+        # There will be zeros intoduced, for example if someone isn't susciptible due to an intervention.
+        nonzero_inds     = betas.nonzero()[0] # Find nonzero entries
+        nonzero_inf_inds = inf_inds[nonzero_inds] # Map onto original indices
+        nonzero_betas    = betas[nonzero_inds] # Remove zero entries from beta
+        nonzero_draws    = draws[nonzero_inds] # Remove unneeded entries from draws
+        nonzero_sources  = sources[nonzero_inf_inds] # Remove zero entries from the sources
+        nonzero_targets  = targets[nonzero_inf_inds] # Remove zero entries from the targets
+        transmissions    = (nonzero_draws < nonzero_betas).nonzero()[0] # Compute the actual infections! # instead of np.random.random(len(nonzero_betas))
         source_inds      = nonzero_sources[transmissions]
         target_inds      = nonzero_targets[transmissions] # Filter the targets on the actual infections
         slist = np.concatenate((slist, source_inds), axis=0)

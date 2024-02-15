@@ -86,6 +86,7 @@ class Sim(cvb.BaseSim):
         self.TestScheduler = None 
         self.active_population_surveillance = False # Whether or not to keep track of peoples IgG levels over the course of a simulation 
         self.aps_program = None # An active population sampling object 
+        self.infection_draws = None
 
         # Make default parameters (using values from parameters.py)
         default_pars = cvpar.make_pars(version=version) # Start with default pars
@@ -681,6 +682,22 @@ class Sim(cvb.BaseSim):
             force (bool): initialize prior infections even if already initialized
         '''
 
+        if self.infection_draws is None:
+            n_draws_layers = {lkey:len(layer['beta']) for lkey, layer in self.people.contacts.items()}
+            self.infection_draws = [
+                [
+                    [
+                        {
+                            lkey:(np.random.random(n_draws_layers[lkey]), np.random.random(n_draws_layers[lkey])) 
+                            for lkey in n_draws_layers.keys()
+                            } 
+                        for variant in range(self.pathogens[current_pathogen].n_variants)
+                        ] 
+                    for current_pathogen in range(len(self.pathogens))
+                    ]
+                for t in range(self.npts)
+            ]
+
         # If we're using multiregion but don't specify particular distribution of infection amount regions, 
         # init as normal. (Uniformly)
       
@@ -887,8 +904,8 @@ class Sim(cvb.BaseSim):
         # Toggle behaviour
         if self['enable_behaviour']:
             people.schedule_behaviour(self['behaviour_pars'])
-            
         
+        timestep_draws = self.infection_draws[t]
         for current_pathogen in range(len(self.pathogens)): 
             # Implement state changes relating to quarantine and isolation/diagnosis; compute associated statistics
             people.update_states_post(pathogen = current_pathogen)
@@ -902,7 +919,8 @@ class Sim(cvb.BaseSim):
             prel_trans = people.rel_trans[current_pathogen]
             prel_sus   = people.rel_sus[current_pathogen]
             iso  = people.isolated
-
+            pathogen_draws = timestep_draws[current_pathogen]
+            
             # Iterate through n_variants to calculate infections. The meat of the simulation. 
             for variant in range(nv):
 
@@ -917,11 +935,13 @@ class Sim(cvb.BaseSim):
                         rel_beta *= self.pathogens[current_pathogen].variants[variant-1].p['rel_beta'] 
 
                 beta = cvd.default_float(self.pathogens[current_pathogen].beta * rel_beta)
+                variant_draws = pathogen_draws[variant]
 
                 for lkey, layer in contacts.items():
                     p1 = layer['p1']
                     p2 = layer['p2']
                     betas = layer['beta']
+                    layer_draws = variant_draws[lkey]
 
                     # Compute relative transmission and susceptibility
                     inf_variant = people.p_infectious[current_pathogen] * (people.p_infectious_variant[current_pathogen] == variant) # TODO: move out of loop?
@@ -937,7 +957,7 @@ class Sim(cvb.BaseSim):
                     # Calculate actual transmission
                     pairs = [[p1,p2]] if not self._legacy_trans else [[p1,p2], [p2,p1]] # Support slower legacy method of calculation, but by default skip this loop
                     for p1,p2 in pairs:
-                        source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, rel_trans, rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
+                        source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, layer_draws = layer_draws, rel_trans = rel_trans, rel_sus = rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
                         people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen)  # Actually infect people
                                   
         ##### CALCULATE STATISTICS #####
