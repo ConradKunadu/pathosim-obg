@@ -33,8 +33,9 @@ class Pathogen(sc.prettyobj):
         self.update_runtime_pars(sim)
         self.make_variant_cross_immunity_matrix() 
 
-        self.absolute_prognoses = sc.dcp(self.prognoses)
-        self.convert_prognoses()
+        if self.absolute_prognoses is None:
+            self.absolute_prognoses = sc.dcp(self.prognoses)
+            self.convert_prognoses()
          
 
         return
