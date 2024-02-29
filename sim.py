@@ -688,7 +688,9 @@ class Sim(cvb.BaseSim):
                 [
                     [
                         {
-                            lkey:(np.random.random(n_draws_layers[lkey]), np.random.random(n_draws_layers[lkey])) 
+                            lkey:(
+                                np.random.random(n_draws_layers[lkey]).astype(np.float32 if cvo.precision == 32 else np.float64),
+                                np.random.random(n_draws_layers[lkey]).astype(np.float32 if cvo.precision == 32 else np.float64)) 
                             for lkey in n_draws_layers.keys()
                             } 
                         for variant in range(self.pathogens[current_pathogen].n_variants)
@@ -955,9 +957,9 @@ class Sim(cvb.BaseSim):
                     rel_sus = p_int.mod_rel_sus(current_pathogen, rel_sus, people.p_exposed, self['Miimm'], self['Mcimm'], people.sus_imm, self.n_pathogens, self.pars['pop_size'])
 
                     # Calculate actual transmission
-                    pairs = [[p1,p2]] if not self._legacy_trans else [[p1,p2], [p2,p1]] # Support slower legacy method of calculation, but by default skip this loop
-                    for p1,p2 in pairs:
-                        source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, layer_draws = layer_draws, rel_trans = rel_trans, rel_sus = rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
+                    pairs = [[p1,p2,layer_draws]] if not self._legacy_trans else [[p1,p2,layer_draws], [p2,p1,layer_draws.reverse()]] # Support slower legacy method of calculation, but by default skip this loop
+                    for p1,p2,ldraws in pairs:
+                        source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, layer_draws_p1 = ldraws[0], layer_draws_p2 = ldraws[1], rel_trans = rel_trans, rel_sus = rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
                         people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen)  # Actually infect people
                                   
         ##### CALCULATE STATISTICS #####
