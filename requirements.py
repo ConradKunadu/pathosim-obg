@@ -9,6 +9,7 @@ __all__ = ['min_versions', 'check_sciris', 'check_synthpops']
 
 min_versions = {'sciris':'1.3.3'} # Should match requirements.txt
 
+import os
 
 #%% Check dependencies
 
@@ -46,3 +47,8 @@ def check_synthpops(verbose=False, die=False):
 
 # Perform the version checks on import
 check_sciris()
+
+# Check if PYTHONHASHSEED is set to 0
+# This is required to ensure reproducibility of simulations across sessions (hashing is used to seed the random number generator)
+if not os.getenv('PYTHONHASHSEED') == "0":
+    raise OSError('Please set PYTHONHASHSEED=0 in your conda environment before using pathosim: To do this, run "conda env config vars set PYTHONHASHSEED=0", and reactivate your conda environment afterwards.')
