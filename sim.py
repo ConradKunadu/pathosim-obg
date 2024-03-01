@@ -818,16 +818,17 @@ class Sim(cvb.BaseSim):
         #For every pathogen, import pathosims, and import variants
         for current_pathogen in range(len(self.pathogens)):
             # Randomly infect some people (imported infections)
-            if self.pathogens[current_pathogen].n_imports:  
+            if self.pathogens[current_pathogen].n_imports:
+                self.set_seed(offset = hash(("step_import", t, current_pathogen))) 
                 n_imports = 0
                 if isinstance(self.pathogens[current_pathogen].n_imports, list):#If we provide an array, then its a timeline of infections, and no random sampling
                     if (self.t < len(self.pathogens[current_pathogen].n_imports)):
                         n_imports = self.pathogens[current_pathogen].n_imports[self.t]
-                else: 
+                else:
                     n_imports = cvu.poisson(self.pathogens[current_pathogen].n_imports/self.rescale_vec[self.t])  
                 if n_imports>0:
                     importation_inds = cvu.choose(max_n=self['pop_size'], n=n_imports)
-                    people.infect(inds=importation_inds, hosp_max=hosp_max, icu_max=icu_max, layer='importation', pathogen_index = current_pathogen, seed_offset = hash(("step_import", t, current_pathogen)))
+                    people.infect(inds=importation_inds, hosp_max=hosp_max, icu_max=icu_max, layer='importation', pathogen_index = current_pathogen, seed_offset = hash(("step_import_infect", t, current_pathogen)))
                      
                     self.results[current_pathogen]['n_imports'][t] += len(strat.get_indices_to_track(self, importation_inds))
              
@@ -961,7 +962,7 @@ class Sim(cvb.BaseSim):
                     pairs = [[p1,p2,layer_draws]] if not self._legacy_trans else [[p1,p2,layer_draws], [p2,p1,layer_draws.reverse()]] # Support slower legacy method of calculation, but by default skip this loop
                     for p_ind, (p1, p2, ldraws) in enumerate(pairs):
                         source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, layer_draws_p1 = ldraws[0], layer_draws_p2 = ldraws[1], rel_trans = rel_trans, rel_sus = rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
-                        people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen, seed_offset = hash(("step_transmission2", t, current_pathogen, variant, lkey, p_ind)))  # Actually infect people
+                        people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen, seed_offset = hash(("step_transmission", t, current_pathogen, variant, lkey, p_ind)))  # Actually infect people
                                   
         ##### CALCULATE STATISTICS #####
         for current_pathogen in range(len(self.pathogens)):
