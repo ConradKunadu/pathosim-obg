@@ -7,6 +7,7 @@ at the heart of the integration loop.
 
 #%% Housekeeping
 
+import sys
 import numba as nb # For faster computations
 import numpy as np # For numerics
 import random # Used only for resetting the seed
@@ -340,6 +341,7 @@ def set_seed(seed=None):
     # Dies if a float is given
     if seed is not None:
         seed = int(seed)
+        seed = seed % (2**32)
 
     set_seed_regular(seed) # If None, reinitializes it
     if seed is None: # Numba can't accept a None seed, so use our just-reinitialized Numpy stream to generate one

@@ -304,17 +304,18 @@ class BaseSim(ParsObj):
         return
 
 
-    def set_seed(self, seed=-1):
+    def set_seed(self, seed=-1, offset = 0):
         '''
         Set the seed for the random number stream from the stored or supplied value
 
         Args:
             seed (None or int): if no argument, use current seed; if None, randomize; otherwise, use and store supplied seed
+            offset (int): offset to apply to the seed, this allows to use the stored seed as baseline but divert from it in a deterministic way. Negative offsets are also supported since uitls.set_seed will map the seed to a positive number.
         '''
         # Unless no seed is supplied, reset it
         if seed != -1:
             self['rand_seed'] = seed
-        cvu.set_seed(self['rand_seed'])
+        cvu.set_seed(self['rand_seed'] + offset)
         return
 
     @property
