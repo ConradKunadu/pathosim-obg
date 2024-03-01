@@ -409,6 +409,22 @@ def binomial_arr(prob_arr):
     '''
     return np.random.random(len(prob_arr)) < prob_arr
 
+def binomial_arr_RNG_safe(prob_arr, n):
+    '''
+    Binomial (Bernoulli) trials each with different probabilities.
+
+    Args:
+        prob_arr (array): array of probabilities
+
+    Returns:
+         Boolean array of which trials on the input array succeeded
+
+    **Example**::
+
+        outcomes = cv.binomial_arr([0.1, 0.1, 0.2, 0.2, 0.8, 0.8]) # Perform 6 trials with different probabilities
+    '''
+    return np.random.random(n)[range(len(prob_arr))] < prob_arr
+
 
 def n_multinomial(probs, n): # No speed gain from Numba
     '''

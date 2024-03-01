@@ -973,7 +973,11 @@ class People(cvb.BasePeople):
                     indices_with_variant = self.p_exposed_by_variant[i,j].nonzero()[0]  
                     indices_with_variant = np.intersect1d(indices_with_variant, inds)
                     for ind in indices_with_variant: 
-                        self.recalculate_disease_trajectory(ind, i, j, Msev_by_ind, Mdur_by_ind, pathogen_index)
+                        self.recalculate_disease_trajectory(ind, i, j, Msev_by_ind, Mdur_by_ind, pathogen_index) 
+        
+        # recalculate_disease_trajectory does not yet account for counterfactual RNG, we reset the seed to avoid further effects on following samples
+        if seed_offset is not None:
+            self.sim.set_seed(offset = hash((seed_offset, "reset_after_recalculate_disease_trajectory")))
                         
         # Deal with variant parameters
         variant_keys = ['rel_symp_prob', 'rel_severe_prob', 'rel_crit_prob', 'rel_death_prob']
@@ -1028,7 +1032,7 @@ class People(cvb.BasePeople):
             self.infection_log.append(entry)
             
         # Calculate how long before this person can infect other people
-        self.dur_exp2inf[pathogen_index, inds] = cvu.sample(**durpars['exp2inf'], size=n_infections) * Mdur_by_ind[inds]
+        self.dur_exp2inf[pathogen_index, inds] = cvu.sample(**durpars['exp2inf'], size=self.sim["pop_size"])[inds] * Mdur_by_ind[inds]
         
         self.date_p_exposed[pathogen_index, inds] = self.t
         self.date_p_infectious[pathogen_index, inds] = self.dur_exp2inf[pathogen_index, inds] + self.t
@@ -1067,22 +1071,21 @@ class People(cvb.BasePeople):
         
         symp_probs = np.clip(symp_probs, 0, 1)
 
-        is_symp = cvu.binomial_arr(symp_probs) # Determine if they develop symptoms
+        is_symp = cvu.binomial_arr_RNG_safe(symp_probs, n = self.sim["pop_size"]) # Determine if they develop symptoms
            
         symp_inds = inds[is_symp]
         asymp_inds = inds[~is_symp] # Asymptomatic
         self.flows_variant[pathogen_index]['new_symptomatic_by_variant'][variant] += len(strat.get_indices_to_track(self.sim, symp_inds))
 
         # CASE 1: Asymptomatic: may infect others, but have no symptoms and do not die
-        dur_asym2rec = cvu.sample(**durpars['asym2rec'], size=len(asymp_inds)) * Mdur_by_ind[asymp_inds]
+        dur_asym2rec = cvu.sample(**durpars['asym2rec'], size=self.sim["pop_size"])[asymp_inds] * Mdur_by_ind[asymp_inds]
         
         self.date_p_recovered[pathogen_index, asymp_inds] = self.date_p_infectious[pathogen_index, asymp_inds] + dur_asym2rec  # Date they recover. PxN.
         self.date_p_symptomatic[pathogen_index, asymp_inds] = np.nan
         self.dur_disease[pathogen_index, asymp_inds] = self.dur_exp2inf[pathogen_index, asymp_inds] + dur_asym2rec  # Store how long this person had COVID-19. Nx1.  
         
         # CASE 2: Symptomatic: can either be mild, severe, or critical
-        n_symp_inds = len(symp_inds)
-        self.dur_inf2sym[pathogen_index, symp_inds] = cvu.sample(**durpars['inf2sym'], size=n_symp_inds)* Mdur_by_ind[symp_inds]# Store how long this person took to develop symptoms  
+        self.dur_inf2sym[pathogen_index, symp_inds] = cvu.sample(**durpars['inf2sym'], size=self.sim["pop_size"])[symp_inds] * Mdur_by_ind[symp_inds]# Store how long this person took to develop symptoms  
         self.date_p_symptomatic[pathogen_index, symp_inds] = self.date_p_infectious[pathogen_index, symp_inds] + self.dur_inf2sym[pathogen_index, symp_inds] # Date they become symptomatic
          
         sev_prop_coinf_mult = np.ones(self.pars['pop_size'])
@@ -1096,13 +1099,13 @@ class People(cvb.BasePeople):
         sev_probs = infect_pars['rel_severe_prob'] * self.severe_prob[pathogen_index, symp_inds]*(1-self.sev_imm[pathogen_index, variant, symp_inds]) * sev_prop_coinf_mult[symp_inds] # Probability of these people being severe
         
         sev_probs = np.clip(sev_probs, 0, 1)
-        is_sev = cvu.binomial_arr(sev_probs) # See if they're a severe or mild case
+        is_sev = cvu.binomial_arr_RNG_safe(sev_probs, n = self.sim["pop_size"]) # See if they're a severe or mild case
         sev_inds = symp_inds[is_sev]
         mild_inds = symp_inds[~is_sev] # Not severe
         self.flows_variant[pathogen_index]['new_severe_by_variant'][variant] += len(strat.get_indices_to_track(self.sim, sev_inds))
         self.date_p_severe[pathogen_index,mild_inds] = np.nan
         # CASE 2.1: Mild symptoms, no hospitalization required and no probability of death
-        dur_mild2rec = cvu.sample(**durpars['mild2rec'], size=len(mild_inds))* Mdur_by_ind[mild_inds]
+        dur_mild2rec = cvu.sample(**durpars['mild2rec'], size=self.sim["pop_size"])[mild_inds] * Mdur_by_ind[mild_inds]
         self.date_p_recovered[pathogen_index, mild_inds] = self.date_p_symptomatic[pathogen_index,mild_inds] + dur_mild2rec  # Date they recover
         self.dur_disease[pathogen_index, mild_inds] = self.dur_exp2inf[pathogen_index, mild_inds] + self.dur_inf2sym[pathogen_index,mild_inds] + dur_mild2rec  # Store how long this person had COVID-19
 
@@ -1115,16 +1118,16 @@ class People(cvb.BasePeople):
             assert co_infected_pathogen_inds[i] != -1 
             crit_prop_coinf_mult[i] = pint.get_disease_traj_alpha(self.abs_crit_prob[co_infected_pathogen_inds[i],i], self.abs_crit_prob[pathogen_index,i], Msev_by_ind[i])
             
-        self.dur_sym2sev[pathogen_index,sev_inds] = cvu.sample(**durpars['sym2sev'], size=len(sev_inds)) * Mdur_by_ind[sev_inds]# Store how long this person took to develop severe symptoms
+        self.dur_sym2sev[pathogen_index,sev_inds] = cvu.sample(**durpars['sym2sev'], size=self.sim["pop_size"])[sev_inds] * Mdur_by_ind[sev_inds]# Store how long this person took to develop severe symptoms
         self.date_p_severe[pathogen_index,sev_inds] = self.date_p_symptomatic[pathogen_index, sev_inds] + self.dur_sym2sev[pathogen_index, sev_inds]  # Date symptoms become severe
         crit_probs = infect_pars['rel_crit_prob'] * self.crit_prob[pathogen_index, sev_inds] * (self.pars['no_hosp_factor'] if hosp_max else 1.) * crit_prop_coinf_mult[sev_inds] # Probability of these people becoming critical - higher if no beds available
         crit_probs = np.clip(crit_probs, 0, 1)
-        is_crit = cvu.binomial_arr(crit_probs)  # See if they're a critical case
+        is_crit = cvu.binomial_arr_RNG_safe(crit_probs, n = self.sim["pop_size"])  # See if they're a critical case
         crit_inds = sev_inds[is_crit]
         non_crit_inds = sev_inds[~is_crit]
         self.date_p_critical[pathogen_index, non_crit_inds] = np.nan
         # CASE 2.2.1 Not critical - they will recover
-        dur_sev2rec = cvu.sample(**durpars['sev2rec'], size=len(non_crit_inds)) * Mdur_by_ind[non_crit_inds]
+        dur_sev2rec = cvu.sample(**durpars['sev2rec'], size=self.sim["pop_size"])[non_crit_inds] * Mdur_by_ind[non_crit_inds]
         self.date_p_recovered[pathogen_index, non_crit_inds] = self.date_p_severe[pathogen_index, non_crit_inds] + dur_sev2rec  # Date they recover
         self.dur_disease[pathogen_index, non_crit_inds] = self.dur_exp2inf[pathogen_index,non_crit_inds] + self.dur_inf2sym[pathogen_index,non_crit_inds] + self.dur_sym2sev[pathogen_index,non_crit_inds] + dur_sev2rec  # Store how long this person had COVID-19
 
@@ -1138,29 +1141,27 @@ class People(cvb.BasePeople):
             death_prop_coinf_mult[i] = pint.get_disease_traj_alpha(self.abs_death_prob[co_infected_pathogen_inds[i],i], self.abs_death_prob[pathogen_index,i], Msev_by_ind[i])
             
 
-        self.dur_sev2crit[pathogen_index, crit_inds] = cvu.sample(**durpars['sev2crit'], size=len(crit_inds)) * Mdur_by_ind[crit_inds]
+        self.dur_sev2crit[pathogen_index, crit_inds] = cvu.sample(**durpars['sev2crit'], size=self.sim["pop_size"])[crit_inds] * Mdur_by_ind[crit_inds]
         self.date_p_critical[pathogen_index, crit_inds] = self.date_p_severe[pathogen_index, crit_inds] + self.dur_sev2crit[pathogen_index, crit_inds]  # Date they become critical
         death_probs = infect_pars['rel_death_prob'] * self.death_prob[pathogen_index, crit_inds] * (self.pars['no_icu_factor'] if icu_max else 1.) * death_prop_coinf_mult[crit_inds]# Probability they'll die
         death_probs = np.clip(death_probs, 0, 1)
-        is_dead = cvu.binomial_arr(death_probs)  # Death outcome
+        is_dead = cvu.binomial_arr_RNG_safe(death_probs, n = self.sim["pop_size"])  # Death outcome
         dead_inds = crit_inds[is_dead]
         alive_inds = crit_inds[~is_dead]
          
         self.date_p_dead[pathogen_index, alive_inds] = np.nan
 
         # CASE 2.2.2.1: Did not die
-        dur_crit2rec = cvu.sample(**durpars['crit2rec'], size=len(alive_inds)) * Mdur_by_ind[alive_inds]
+        dur_crit2rec = cvu.sample(**durpars['crit2rec'], size=self.sim["pop_size"])[alive_inds] * Mdur_by_ind[alive_inds]
         self.date_p_recovered[pathogen_index, alive_inds] = self.date_p_critical[pathogen_index,alive_inds] + dur_crit2rec # Date they recover
         self.dur_disease[pathogen_index, alive_inds] = self.dur_exp2inf[pathogen_index, alive_inds] + self.dur_inf2sym[pathogen_index,alive_inds] + self.dur_sym2sev[pathogen_index, alive_inds] + self.dur_sev2crit[pathogen_index, alive_inds] + dur_crit2rec  # Store how long this person had COVID-19
 
         # CASE 2.2.2.2: Did die
-        dur_crit2die = cvu.sample(**durpars['crit2die'], size=len(dead_inds)) * Mdur_by_ind[dead_inds]
+        dur_crit2die = cvu.sample(**durpars['crit2die'], size=self.sim["pop_size"])[dead_inds] * Mdur_by_ind[dead_inds]
         self.date_p_dead[pathogen_index, dead_inds] = self.date_p_critical[pathogen_index, dead_inds] + dur_crit2die # Date of death 
         self.dur_disease[pathogen_index, dead_inds] = self.dur_exp2inf[pathogen_index,dead_inds] + self.dur_inf2sym[pathogen_index,dead_inds] + self.dur_sym2sev[pathogen_index,dead_inds] + self.dur_sev2crit[pathogen_index,dead_inds] + dur_crit2die   # Store how long this person had COVID-19
        
         self.date_p_recovered[pathogen_index,dead_inds] = np.nan # If they did die, remove them from recovered
-
-        
 
         if not self.pars['pathogens'][pathogen_index].use_nab_framework: 
             rec_inds = list(set(inds) - set(dead_inds))
@@ -1170,7 +1171,6 @@ class People(cvb.BasePeople):
             self['decay_start_date'][pathogen_index, rec_inds] = self.date_p_recovered[pathogen_index, rec_inds] 
             self['decay_start_date'][pathogen_index, dead_inds] = self.date_p_dead[pathogen_index, dead_inds] 
 
-
         # HANDLE VIRAL LOAD CONTROL POINTS
        
         # Get P_inf: where viral load crosses 10^6 cp/mL
@@ -1178,11 +1178,11 @@ class People(cvb.BasePeople):
         self.y_p_inf[pathogen_index,inds] = 6
 
         # Get P1: where viral load crosses 10^3 cp/mL; time difference obtained empirically through simulation
-        self.x_p1[pathogen_index,inds] = np.maximum(self.x_p_inf[pathogen_index,inds] - (np.random.gamma(2, 0.35, size=len(inds)) + 0.25), 0)
+        self.x_p1[pathogen_index,inds] = np.maximum(self.x_p_inf[pathogen_index,inds] - (np.random.gamma(2, 0.35, size=self.sim["pop_size"])[inds] + 0.25), 0)
         self.y_p1[pathogen_index,inds] = 3
 
         # Get P2: where viral load peaks; time difference obtained empirically through simulation
-        self.x_p2[pathogen_index,inds] = self.x_p_inf[pathogen_index,inds] + (np.random.gamma(3, 0.26, size=len(inds)) + 0.1)
+        self.x_p2[pathogen_index,inds] = self.x_p_inf[pathogen_index,inds] + (np.random.gamma(3, 0.26, size=self.sim["pop_size"])[inds] + 0.1)
         self.y_p2[pathogen_index,inds] = ((self.y_p_inf[pathogen_index,inds] - self.y_p1[pathogen_index,inds])*(self.x_p2[pathogen_index,inds] - self.x_p1[pathogen_index,inds])/(self.x_p_inf[pathogen_index,inds] - self.x_p1[pathogen_index,inds])) + self.y_p1[pathogen_index,inds]
 
         # Align P1, P_inf, and P2 to current time
@@ -1196,12 +1196,11 @@ class People(cvb.BasePeople):
         time_recovered[inds_dead] = self.date_p_dead[pathogen_index,inds_dead]
         self.x_p3[pathogen_index,inds] = np.maximum(time_recovered[inds], self.x_p2[pathogen_index,inds])
         self.y_p3[pathogen_index,inds] = 6
-          
-         
+
         # Handle immunity aspects
         if self.pars['pathogens'][pathogen_index].use_nab_framework: 
             symp = dict(asymp=asymp_inds, mild=mild_inds, sev=sev_inds)
-            cvi.update_peak_nab(self, inds, nab_pars=self.pars['pathogens'][pathogen_index], symp=symp, pathogen = pathogen_index)
+            cvi.update_peak_nab(self, inds, nab_pars=self.pars['pathogens'][pathogen_index], symp=symp, pathogen = pathogen_index) # this is also not yet counterfactual RNG safe
             
         self.merge_states(self.pars['n_pathogens'], False, True)
 
