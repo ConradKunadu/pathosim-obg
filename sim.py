@@ -689,8 +689,9 @@ class Sim(cvb.BaseSim):
                     [
                         {
                             lkey:(
-                                np.random.random(n_draws_layers[lkey]).astype(np.float32 if cvo.precision == 32 else np.float64),
-                                np.random.random(n_draws_layers[lkey]).astype(np.float32 if cvo.precision == 32 else np.float64)) 
+                                np.random.random(n_draws_layers[lkey]).astype(cvd.default_float),
+                                np.random.random(n_draws_layers[lkey]).astype(cvd.default_float)
+                                ) 
                             for lkey in n_draws_layers.keys()
                             } 
                         for variant in range(self.pathogens[current_pathogen].n_variants)
