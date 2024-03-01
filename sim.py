@@ -800,6 +800,7 @@ class Sim(cvb.BaseSim):
             raise AlreadyRunError('Simulation already complete (call sim.initialize() to re-run)')
 
         t = self.t 
+
         # If it's the first timestep, infect people
         #if t == 0:
             #self.init_infections(verbose=False)
@@ -826,14 +827,14 @@ class Sim(cvb.BaseSim):
                     n_imports = cvu.poisson(self.pathogens[current_pathogen].n_imports/self.rescale_vec[self.t])  
                 if n_imports>0:
                     importation_inds = cvu.choose(max_n=self['pop_size'], n=n_imports)
-                    people.infect(inds=importation_inds, hosp_max=hosp_max, icu_max=icu_max, layer='importation', pathogen_index = current_pathogen)
+                    people.infect(inds=importation_inds, hosp_max=hosp_max, icu_max=icu_max, layer='importation', pathogen_index = current_pathogen, seed_offset = hash(("step_import", t, current_pathogen)))
                      
                     self.results[current_pathogen]['n_imports'][t] += len(strat.get_indices_to_track(self, importation_inds))
              
             # Add variants
             for variant in self.pathogens[current_pathogen].variants:
                 if isinstance(variant, pat.Pathogen.Variant):
-                    variant.apply(self) 
+                    variant.apply(self, seed_offset = hash(("step_import_variant", t, current_pathogen, variant.index))) 
                      
         # Sent smartwatch alerts and update alert histories
         if self.pars['enable_smartwatches']:
@@ -958,9 +959,9 @@ class Sim(cvb.BaseSim):
 
                     # Calculate actual transmission
                     pairs = [[p1,p2,layer_draws]] if not self._legacy_trans else [[p1,p2,layer_draws], [p2,p1,layer_draws.reverse()]] # Support slower legacy method of calculation, but by default skip this loop
-                    for p1,p2,ldraws in pairs:
+                    for p_ind, (p1, p2, ldraws) in enumerate(pairs):
                         source_inds, target_inds = cvu.compute_infections(beta, p1, p2, betas, layer_draws_p1 = ldraws[0], layer_draws_p2 = ldraws[1], rel_trans = rel_trans, rel_sus = rel_sus, legacy=self._legacy_trans)  # Calculate transmission! 
-                        people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen)  # Actually infect people
+                        people.infect(inds=target_inds, hosp_max=hosp_max, icu_max=icu_max, source=source_inds, layer=lkey, variant=variant, pathogen_index = current_pathogen, seed_offset = hash(("step_transmission2", t, current_pathogen, variant, lkey, p_ind)))  # Actually infect people
                                   
         ##### CALCULATE STATISTICS #####
         for current_pathogen in range(len(self.pathogens)):

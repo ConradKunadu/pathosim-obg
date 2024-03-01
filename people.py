@@ -894,7 +894,7 @@ class People(cvb.BasePeople):
 
 
 
-    def infect(self, inds, hosp_max=None, icu_max=None, source=None, layer=None, variant=0, pathogen_index = 0):
+    def infect(self, inds, hosp_max=None, icu_max=None, source=None, layer=None, variant=0, pathogen_index = 0, seed_offset = None):
         '''
         Infect people and determine their eventual outcomes.
 
@@ -914,10 +914,14 @@ class People(cvb.BasePeople):
             source   (array): source indices of the people who transmitted this infection (None if an importation or seed infection)
             layer    (str):   contact layer this infection was transmitted on
             variant  (int):   the variant people are being infected by
+            seed     (int):   optional seed to use for infection RNG
 
         Returns:
             count (int): number of people infected
         '''
+        if seed_offset is not None:
+            self.sim.set_seed(offset = seed_offset)
+
         if len(inds) == 0:  
             return 0
          

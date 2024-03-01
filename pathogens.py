@@ -432,7 +432,7 @@ class Pathogen(sc.prettyobj):
             return
 
 
-        def apply(self, sim):
+        def apply(self, sim, seed_offset = None):
             ''' Introduce new infections with this variant '''
             for ind in itvs.find_day(self.days, sim.t, interv=self, sim=sim): # Time to introduce variant
                 susceptible_inds = utls.true(sim.people.p_susceptible[self.pathogen_index])
@@ -441,8 +441,10 @@ class Pathogen(sc.prettyobj):
                 if self.n_imports > 0 and n_imports == 0 and sim['verbose']:
                     msg = f'Warning: {self.n_imports:n} imported infections of {self.label} were specified on day {sim.t}. Increase the number of imports or use more agents.'
                     print(msg)
+                if seed_offset is not None:
+                    sim.set_seed(offset = hash((seed_offset, "choose")))
                 importation_inds = np.random.choice(susceptible_inds, n_imports, replace=False) # Can't use utls.choice() since sampling from indices
-                sim.people.infect(inds=importation_inds, layer='importation', variant=self.index, pathogen_index = self.pathogen_index)
+                sim.people.infect(inds=importation_inds, layer='importation', variant=self.index, pathogen_index = self.pathogen_index, seed_offset = hash((seed_offset, "infect")))
                 sim.results[self.pathogen_index]['n_imports'][sim.t] += n_imports
             return
 
