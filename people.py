@@ -415,9 +415,11 @@ class People(cvb.BasePeople):
         return sw_quarantined_count, sw_i_quarantined_count
 
 
-    def update_contacts(self):
+    def update_contacts(self, seed_offset = None):
         ''' Refresh dynamic contacts, e.g. community '''
         # Figure out if anything needs to be done -- e.g. {'h':False, 'c':True}
+        if seed_offset is not None:
+            self.sim.set_seed(offset = seed_offset)
         for lkey, is_dynam in self.pars['dynam_layer'].items():
             if is_dynam:
                 self.contacts[lkey].update(self)

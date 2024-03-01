@@ -790,7 +790,7 @@ class Sim(cvb.BaseSim):
         #self.rescale() # Check if we need to rescale
         people = self.people # Shorten this for later use
          
-        contacts = people.update_contacts() # Compute new contacts. For dynamic contacts. 
+        contacts = people.update_contacts(seed_offset = hash(("contacts", t))) # Compute new contacts. For dynamic contacts. 
         hosp_max = people.count1d('severe')   > self['n_beds_hosp'] if self['n_beds_hosp'] is not None else False # Check for acute bed constraint
         icu_max  = people.count1d('critical') > self['n_beds_icu']  if self['n_beds_icu']  is not None else False # Check for ICU bed constraint
          
