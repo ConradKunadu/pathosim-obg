@@ -55,3 +55,20 @@ class CounterfactualSim(cvb.ParsObj):
         if simfile is None:
             self.simfile = 'covasim.sim'
         return
+    
+    def initialize(self):
+        # initialize baseline sim
+        self.sim_baseline = inf.Sim(self.pars)
+        self.sim_baseline.init_people()
+        
+        # store pop file
+        # create temporary file using tempfile
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
+            self.sim_baseline.people.save(fp.name)
+            self.people_file_temp = fp.name
+        return
+
+    def run_baseline(self):
+        # run the baseline simulation
+        self.sim_baseline.run()
+        return
