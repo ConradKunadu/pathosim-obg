@@ -44,6 +44,7 @@ class CounterfactualSim(cvb.ParsObj):
 
         # sim objects
         self.sim_baseline = None
+        self.pars_baseline = None
 
         default_pars = cvpar.make_pars(version=version) # Start with default pars
         super().__init__(default_pars) # Initialize and set the parameters as attributes
@@ -67,7 +68,8 @@ class CounterfactualSim(cvb.ParsObj):
     def initialize(self):
         # initialize baseline sim
         self.sim_baseline = inf.Sim(self.pars)
-        self.sim_baseline.init_people()
+        self.sim_baseline.initialize()
+        self.pars_baseline = self.sim_baseline._orig_pars
         
         # store pop file
         # create temporary file using tempfile
