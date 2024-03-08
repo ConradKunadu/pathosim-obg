@@ -106,3 +106,26 @@ class CounterfactualSim(cvb.ParsObj):
         sim_cf.run()
         self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
         return
+    
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False):
+        if not self.initialized:
+            self.initialize()
+
+        if not self.sim_baseline.results_ready:
+            self.run_baseline()
+
+        d_range = self.sim_baseline.get_detection_ranges()[pathogen_index]
+
+        if n_steps is None:
+            n_steps = d_range["upper"] - d_range["lower"] + 1
+
+        if intervention_package_keys is None:
+            intervention_package_keys = self.intervention_packages.keys()
+
+        for package_key in intervention_package_keys:
+            for d_time in np.round(np.linspace(d_range['lower'], d_range['upper'], n_steps)).astype(int):
+                if verbose:
+                    print(f'Running counterfactual for intervention package "{package_key}" with detection time {d_time}.')
+                self.run_counterfactual(package_key, d_time)
+
+        return
