@@ -194,6 +194,8 @@ class Sim(cvb.BaseSim):
         #if self.active_population_surveillance == True: 
             #Initialize a results object to track the IgG levels in the population 
             #IgG_tracking = aps_results.Results()
+        
+        self._orig_pars = sc.dcp(self.pars) # Create a copy of the parameters, to restore after the run, in case they are dynamically modified
 
         self.initialized   = True
         self.complete      = False
@@ -1175,7 +1177,7 @@ class Sim(cvb.BaseSim):
         T = sc.timer() 
         if not self.initialized:
             self.initialize()
-            self._orig_pars = sc.dcp(self.pars) # Create a copy of the parameters, to restore after the run, in case they are dynamically modified
+        self._orig_pars = sc.dcp(self.pars) # Create a copy of the parameters, to restore after the run, in case they are dynamically modified
 
         if verbose is None:
             verbose = self['verbose']
