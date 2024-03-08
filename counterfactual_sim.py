@@ -45,6 +45,7 @@ class CounterfactualSim(cvb.ParsObj):
         # sim objects
         self.sim_baseline = None
         self.pars_baseline = None
+        self.sims_counterfactual = None
 
         default_pars = cvpar.make_pars(version=version) # Start with default pars
         super().__init__(default_pars) # Initialize and set the parameters as attributes
@@ -76,12 +77,32 @@ class CounterfactualSim(cvb.ParsObj):
         with tempfile.NamedTemporaryFile(delete=False) as fp:
             self.sim_baseline.people.save(fp.name)
             self.people_file_temp = fp.name
+
+        # initialize object for storing counterfactual sims
+        if self.intervention_packages is not None:
+            self.sims_counterfactual = sc.odict()
+            for k in self.intervention_packages.keys():
+                self.sims_counterfactual[k] = dict()
+
+        self.initialized = True
         return
 
     def run_baseline(self):
         if not self.initialized:
             self.initialize()
         
+        self.sim_baseline.check_already_run()
+        
         # run the baseline simulation
         self.sim_baseline.run()
+        return
+    
+    def run_counterfactual(self, intervention_package_key, detection_time):
+        sim_cf = inf.Sim(
+            sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
+            popfile=self.people_file_temp,
+            interventions = self.intervention_packages[intervention_package_key]
+            )
+        sim_cf.run()
+        self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
         return
