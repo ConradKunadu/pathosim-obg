@@ -97,14 +97,17 @@ class CounterfactualSim(cvb.ParsObj):
         self.sim_baseline.run()
         return
     
-    def run_counterfactual(self, intervention_package_key, detection_time):
-        sim_cf = inf.Sim(
-            sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
-            popfile=self.people_file_temp,
-            interventions = self.intervention_packages[intervention_package_key]
-            )
-        sim_cf.run()
-        self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
+    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False):
+        for detection_time in detection_times:
+            if verbose:
+                print(f'Running counterfactual for intervention package "{intervention_package_key}" with detection time {detection_time}.')
+            sim_cf = inf.Sim(
+                sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
+                popfile=self.people_file_temp,
+                interventions = sc.dcp(self.intervention_packages[intervention_package_key])
+                )
+            sim_cf.run()
+            self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
         return
     
     def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False):
@@ -115,17 +118,16 @@ class CounterfactualSim(cvb.ParsObj):
             self.run_baseline()
 
         d_range = self.sim_baseline.get_detection_ranges()[pathogen_index]
-
         if n_steps is None:
             n_steps = d_range["upper"] - d_range["lower"] + 1
+        d_times = np.round(np.linspace(d_range['lower'], d_range['upper'], n_steps)).astype(int)
 
         if intervention_package_keys is None:
-            intervention_package_keys = self.intervention_packages.keys()
+            intervention_package_keys = list(self.intervention_packages.keys())
+        if not isinstance(intervention_package_keys, list):
+            intervention_package_keys = [intervention_package_keys]
 
         for package_key in intervention_package_keys:
-            for d_time in np.round(np.linspace(d_range['lower'], d_range['upper'], n_steps)).astype(int):
-                if verbose:
-                    print(f'Running counterfactual for intervention package "{package_key}" with detection time {d_time}.')
-                self.run_counterfactual(package_key, d_time)
+            self.run_counterfactual(package_key, detection_times = d_times, verbose = verbose)
 
         return
