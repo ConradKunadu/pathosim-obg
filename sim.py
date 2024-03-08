@@ -1623,6 +1623,24 @@ class Sim(cvb.BaseSim):
                 epidemic[p] = True
         return epidemic
     
+    def get_detection_ranges(self, upper_severe=30):
+        ''' Compute a lower and upper bound on the detection time based on simple heuristics.'''
+
+        detection_ranges = [{} for p in range(len(self.pathogens))]
+
+        # lower bound on detection time is first time someone developed symptoms
+        for p in range(len(self.pathogens)):
+            detection_ranges[p]['lower'] = np.nanmin(self.people.date_p_symptomatic[p,])
+
+        # upper bound on detection time is when 30 people had severe symptoms
+        for p in range(len(self.pathogens)):
+            larger = self.results[p]['cum_severe'].values>upper_severe
+            if np.any(larger):
+                detection_ranges[p]['upper'] = np.argmax(larger)
+            else:
+                detection_ranges[p]['upper'] = np.inf
+        
+        return detection_ranges
 
 
     def summarize(self, full=False, t=None, sep=None, output=False):
