@@ -69,6 +69,9 @@ class CounterfactualSim(cvb.ParsObj):
         return
 
     def run_baseline(self):
+        if not self.initialized:
+            self.initialize()
+        
         # run the baseline simulation
         self.sim_baseline.run()
         return
