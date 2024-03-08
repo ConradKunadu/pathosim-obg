@@ -54,11 +54,11 @@ def make_pars(version=None, **kwargs):
 
     #------------------------------------------------------------------------------------------#
     #Pathogen-pathogen interaction
-    pars['Mtrans']= None # Mtrans[i,j]=P(transmit Pi | co–infected with Pj) / P(transmit Pi at baseline)
-    pars['Miimm'] = None # P(infection with Pi | co–infected with Pj) / P(infection with Pi at baseline)
+    pars['Mtrans']= None # Mtrans[i,j]=P(transmit Pi | coï¿½infected with Pj) / P(transmit Pi at baseline)
+    pars['Miimm'] = None # P(infection with Pi | coï¿½infected with Pj) / P(infection with Pi at baseline)
     pars['Mcimm'] = None # contribution of current immunity to Pj to immunity to Pi
-    pars['Mdur'] =  None # (duration of Pi | co–infected with Pj) / (duration of Pi at baseline)
-    pars['Msev'] =  None # (severity of Pi | co–infected with Pj) / (severity of Pi at baseline)
+    pars['Mdur'] =  None # (duration of Pi | coï¿½infected with Pj) / (duration of Pi at baseline)
+    pars['Msev'] =  None # (severity of Pi | coï¿½infected with Pj) / (severity of Pi at baseline)
    
     #--------------------------- POPULATION & CONTACTS PARAMETERS------------------------------#
     # Population parameters
@@ -66,6 +66,7 @@ def make_pars(version=None, **kwargs):
     pars['pop_type']     = 'random' # What type of population data to use -- 'random' (fastest), 'synthpops' (best), 'hybrid' (compromise)
     pars['location']     = None     # What location to load data from -- default Seattle
     pars['pop']          = None     # Detailed synthetic population -- this is supplied for access to workplace information for surveillance
+    pars['epidemic_threshold_p'] = 0.1 # The proportion of the population that needs to be infected in order to count as an epidemic (note this is only for classification, it does not influence the actual simulation)
 
     # Simulation parameters
     pars['start_day']  = '2020-03-01' # Start day of the simulation

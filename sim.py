@@ -1602,6 +1602,27 @@ class Sim(cvb.BaseSim):
             return summary
         else:
             return
+        
+    def is_epidemic(self, require_run=False):
+        '''
+        Determine whether or not an epidemic has occurred. This is a simple heuristic
+        based on whether or not the number of infections exceeds a threshold.
+
+        Returns:
+            epidemic (bool): whether or not an epidemic has occurred, for each pathogen
+        '''
+
+        # Compute the summary
+        if require_run and not self.results_ready:
+            errormsg = 'Simulation not yet run'
+            raise RuntimeError(errormsg)
+        
+        epidemic = [False for p in range(len(self.pathogens))]
+        for p in range(len(self.pathogens)):
+            if self.results[p]['cum_infections'][-1] >= self.pars['epidemic_threshold_p'] * self.pars['pop_size']:
+                epidemic[p] = True
+        return epidemic
+    
 
 
     def summarize(self, full=False, t=None, sep=None, output=False):
