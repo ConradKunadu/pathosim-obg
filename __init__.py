@@ -30,4 +30,5 @@ from .stratify                  import *
 from .pathogen_interactions     import * # Depends on sim
 from .analysis                  import * # Depends on utils, misc, interventions
 from .sim                       import * # Depends on almost everything
+from .counterfactual_sim        import * # Depends on sim
 
