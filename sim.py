@@ -177,7 +177,7 @@ class Sim(cvb.BaseSim):
         else:
             self.init_people(reset=reset, init_infections=init_infections, **kwargs)
         
-
+        self.set_seed() # Reset the random seed again so the random number stream is consistent
         if self.pars['enable_stratifications']:
             self.init_stratifications()
         self.init_infections()   
@@ -557,7 +557,7 @@ class Sim(cvb.BaseSim):
             else:
                 self.people = cvpop.make_people(self, popdict = self.popdict.popdict, workplaces = self.popdict.workplaces, n_workplaces = self.popdict.n_workplaces,reset=reset, verbose=verbose, **kwargs)
 
-
+        self.set_seed()
         self.people.initialize(sim_pars=self.pars, sim = self) # Fully initialize the people
         self.reset_layer_pars(force=False) # Ensure that layer keys match the loaded population
 
