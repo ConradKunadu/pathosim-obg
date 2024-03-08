@@ -30,9 +30,17 @@ class CounterfactualSim(cvb.ParsObj):
         self.data          = None     # The actual data
         self.popdict       = people   # The population dictionary
         self._default_ver  = version  # Default version of parameters used
-        self.intervention_packages = intervention_packages # The intervention packages
         self.initialized   = False    # Whether or not initialization is complete
         self.people_file_temp = None  # Temporary file for people
+
+        # ensure that intervention packages are a list of lists
+        if intervention_packages is not None:
+            if not isinstance(intervention_packages, dict):
+                raise ValueError(f'intervention_packages must be a dict, not {type(intervention_packages)}.')
+            for pkg_key, pkg in intervention_packages.items():
+                if not isinstance(pkg, list):
+                    raise ValueError(f'Error for package {pkg_key}: an intervention package must be a list of interventions.')
+        self.intervention_packages = intervention_packages # The intervention packages
 
         # sim objects
         self.sim_baseline = None
