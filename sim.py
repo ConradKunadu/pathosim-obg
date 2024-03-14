@@ -86,8 +86,6 @@ class Sim(cvb.BaseSim):
         self.TestScheduler = None 
         self.active_population_surveillance = False # Whether or not to keep track of peoples IgG levels over the course of a simulation 
         self.aps_program = None # An active population sampling object 
-        self.events = None # Events that happen during the course of the simulation, e.g. stop/start of interventions
-        self.event_dict = None # Currently only set by the intervention_bucket subclass of Intervention
 
         # Make default parameters (using values from parameters.py)
         default_pars = cvpar.make_pars(version=version) # Start with default pars
