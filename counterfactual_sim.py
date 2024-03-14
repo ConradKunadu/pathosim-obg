@@ -87,10 +87,12 @@ class CounterfactualSim(cvb.ParsObj):
         self.initialized = True
         return
 
-    def run_baseline(self):
+    def run_baseline(self, verbose = False):
         if not self.initialized:
             self.initialize()
         
+        if verbose:
+            print(f'Running baseline (seed {self.pars_baseline["rand_seed"]}) simulation.')
         self.sim_baseline.check_already_run()
         
         # run the baseline simulation
@@ -135,7 +137,7 @@ class CounterfactualSim(cvb.ParsObj):
 class CounterfactualMultiSim(cvb.ParsObj):
 
     def __init__(self, pars=None, datafile=None, label=None, simfile=None,
-                popfile=None, people=None, version=None, intervention_packages=None, n_sims=1, **kwargs):
+                popfile=None, people=None, version=None, intervention_packages=None, n_sims=1, maxcpu = 0.9, maxmem = 0.9, interval = 0.5, **kwargs):
          # Set attributes
         self.pars          = pars
         self.datafile      = datafile # The name of the data file
@@ -148,6 +150,9 @@ class CounterfactualMultiSim(cvb.ParsObj):
         self.n_sims        = n_sims # number of simulations
         self.sims          = list()
         self.kwargs        = kwargs
+
+        self.set_opts_parallelization(maxcpu, maxmem, interval)
+
         self.initialized   = False    # Whether or not initialization is complete
         return
     
@@ -163,24 +168,63 @@ class CounterfactualMultiSim(cvb.ParsObj):
                 self.sims.append(sim)
             self.initialized = True
         return
+    
+    def set_opts_parallelization(self, maxcpu = 0.9, maxmem = 0.9, interval = 0.5):
+        self.maxcpu = maxcpu
+        self.maxmem = maxmem
+        self.interval = interval
+        return
 
-    def run_baseline(self):
+    def run_baseline(self, maxcpu = None, maxmem = None, verbose = False, interval = None):
         if not self.initialized:
             self.initialize()
-        for sim in self.sims:
-            sim.run_baseline()
+        
+        def run_indi_sim(indi_sim, verbose):
+            indi_sim.run_baseline(verbose = verbose)
+            return indi_sim
+        
+        if maxcpu is None:
+            maxcpu = self.maxcpu
+        if maxmem is None:
+            maxmem = self.maxmem
+        if interval is None:
+            interval = self.interval
+
+        self.sims = sc.parallelize(run_indi_sim, self.sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
     
-    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False):
+    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False, maxcpu = None, maxmem = None, interval = None):
         if not self.initialized:
             self.initialize()
-        for sim in self.sims:
-            sim.run_counterfactual(intervention_package_key, detection_times, verbose = verbose)
+
+        def run_indi_sim(indi_sim, intervention_package_key, detection_times, verbose):
+            indi_sim.run_counterfactual(intervention_package_key, detection_times, verbose = verbose)
+            return indi_sim
+        
+        if maxcpu is None:
+            maxcpu = self.maxcpu
+        if maxmem is None:
+            maxmem = self.maxmem
+        if interval is None:
+            interval = self.interval
+        
+        self.sims = sc.parallelize(run_indi_sim, self.sims, intervention_package_key = intervention_package_key, detection_times = detection_times, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
     
-    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False):
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False, maxcpu = None, maxmem = None, interval = None):
         if not self.initialized:
             self.initialize()
-        for sim in self.sims:
-            sim.scan_detection_range(pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose)
+
+        def run_indi_sim(indi_sim, pathogen_index, intervention_package_keys, n_steps, verbose):
+            indi_sim.scan_detection_range(pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose)
+            return indi_sim
+        
+        if maxcpu is None:
+            maxcpu = self.maxcpu
+        if maxmem is None:
+            maxmem = self.maxmem
+        if interval is None:
+            interval = self.interval
+        
+        self.sims = sc.parallelize(run_indi_sim, self.sims, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
