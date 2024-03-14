@@ -15,7 +15,7 @@ from . import parameters as cvpar
 from collections import defaultdict
 import tempfile
 
-__all__ = ['CounterfactualSim']
+__all__ = ['CounterfactualSim', 'CounterfactualMultiSim']
 
 class CounterfactualSim(cvb.ParsObj):
 
@@ -100,7 +100,7 @@ class CounterfactualSim(cvb.ParsObj):
     def run_counterfactual(self, intervention_package_key, detection_times, verbose = False):
         for detection_time in detection_times:
             if verbose:
-                print(f'Running counterfactual for intervention package "{intervention_package_key}" with detection time {detection_time}.')
+                print(f'Running counterfactual (seed {self.pars_baseline["rand_seed"]}) for intervention package "{intervention_package_key}" with detection time {detection_time}.')
             sim_cf = inf.Sim(
                 sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
                 popfile=self.people_file_temp,
@@ -130,4 +130,57 @@ class CounterfactualSim(cvb.ParsObj):
         for package_key in intervention_package_keys:
             self.run_counterfactual(package_key, detection_times = d_times, verbose = verbose)
 
+        return
+    
+class CounterfactualMultiSim(cvb.ParsObj):
+
+    def __init__(self, pars=None, datafile=None, label=None, simfile=None,
+                popfile=None, people=None, version=None, intervention_packages=None, n_sims=1, **kwargs):
+         # Set attributes
+        self.pars          = pars
+        self.datafile      = datafile # The name of the data file
+        self.label         = label    # The label/name of the simulation
+        self.simfile       = simfile  # The filename of the sim
+        self.popfile       = popfile  # The population file
+        self.people        = people  # The population dictionary
+        self.version       = version  # version
+        self.intervention_packages = intervention_packages
+        self.n_sims        = n_sims # number of simulations
+        self.sims          = list()
+        self.kwargs        = kwargs
+        self.initialized   = False    # Whether or not initialization is complete
+        return
+    
+    def initialize(self, n_sims = None):
+        if not self.initialized:
+            if n_sims is not None:
+                self.n_sims = n_sims
+            for i in range(self.n_sims):
+                simpars = sc.dcp(self.pars)
+                simpars['rand_seed'] = simpars['rand_seed'] + i
+                sim = CounterfactualSim(pars = simpars, datafile=self.datafile, label=self.label, simfile=self.simfile, popfile=self.popfile, people=sc.dcp(self.people), version=self.version, intervention_packages=sc.dcp(self.intervention_packages), **self.kwargs)
+                sim.initialize()
+                self.sims.append(sim)
+            self.initialized = True
+        return
+
+    def run_baseline(self):
+        if not self.initialized:
+            self.initialize()
+        for sim in self.sims:
+            sim.run_baseline()
+        return
+    
+    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False):
+        if not self.initialized:
+            self.initialize()
+        for sim in self.sims:
+            sim.run_counterfactual(intervention_package_key, detection_times, verbose = verbose)
+        return
+    
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False):
+        if not self.initialized:
+            self.initialize()
+        for sim in self.sims:
+            sim.scan_detection_range(pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose)
         return
