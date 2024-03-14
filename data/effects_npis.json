@@ -1,0 +1,58 @@
+{
+	"quarantine": {
+		"a": {"weak": 1.0, "medium": 0.2, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"mask mandate": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"social distancing": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"travel restrictions": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"school closure": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"office closure": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"business closure": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	},
+	"public health comms": {
+		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
+		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
+	}
+}
