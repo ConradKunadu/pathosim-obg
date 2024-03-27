@@ -14,6 +14,7 @@ from . import defaults as cvd
 from . import parameters as cvpar
 from collections import defaultdict
 import tempfile
+import pandas as pd
 
 __all__ = ['CounterfactualSim', 'CounterfactualMultiSim']
 
@@ -46,6 +47,10 @@ class CounterfactualSim(cvb.ParsObj):
         self.sim_baseline = None
         self.pars_baseline = None
         self.sims_counterfactual = None
+        
+        # summary objects
+        self.summary_baseline = None
+        self.summaries_counterfactual = None
 
         default_pars = cvpar.make_pars(version=version) # Start with default pars
         super().__init__(default_pars) # Initialize and set the parameters as attributes
@@ -81,8 +86,10 @@ class CounterfactualSim(cvb.ParsObj):
         # initialize object for storing counterfactual sims
         if self.intervention_packages is not None:
             self.sims_counterfactual = sc.odict()
+            self.summaries_counterfactual = sc.odict()
             for k in self.intervention_packages.keys():
                 self.sims_counterfactual[k] = dict()
+                self.summaries_counterfactual[k] = dict()
 
         self.initialized = True
         return
@@ -97,22 +104,38 @@ class CounterfactualSim(cvb.ParsObj):
         
         # run the baseline simulation
         self.sim_baseline.run()
+
+        # store the baseline summary
+        summary_df = pd.DataFrame((self.sim_baseline.summary[p] for p in range(self.sim_baseline.n_pathogens)))
+        summary_df.insert(0, "pathogen", summary_df.index.values)
+        self.summary_baseline = summary_df
         return
     
-    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False):
+    def run_counterfactual(self, intervention_package_key, detection_times, store_sims = True, verbose = False):
         for detection_time in detection_times:
             if verbose:
                 print(f'Running counterfactual (seed {self.pars_baseline["rand_seed"]}) for intervention package "{intervention_package_key}" with detection time {detection_time}.')
+            
+            # create counterfactual simulation safely (using deep copy where necessary)
             sim_cf = inf.Sim(
                 sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
                 popfile=self.people_file_temp,
                 interventions = sc.dcp(self.intervention_packages[intervention_package_key])
                 )
+            
+            # run the counterfactual simulation
             sim_cf.run()
-            self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
+
+            # store results
+            summary_df = pd.DataFrame((sim_cf.summary[p] for p in range(sim_cf.n_pathogens)))
+            summary_df.insert(0, "pathogen", summary_df.index.values)
+            self.summaries_counterfactual[intervention_package_key][detection_time] = summary_df
+            
+            if store_sims:
+                self.sims_counterfactual[intervention_package_key][detection_time] = sim_cf
         return
     
-    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False):
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, store_sims = True, verbose = False):
         if not self.initialized:
             self.initialize()
 
@@ -130,9 +153,25 @@ class CounterfactualSim(cvb.ParsObj):
             intervention_package_keys = [intervention_package_keys]
 
         for package_key in intervention_package_keys:
-            self.run_counterfactual(package_key, detection_times = d_times, verbose = verbose)
+            self.run_counterfactual(package_key, detection_times = d_times, store_sims = store_sims, verbose = verbose)
 
         return
+    
+    def get_summaries_df(self):
+        def label_df(df, seed, intervention_package, delay):
+            df = df.copy()
+            df.insert(0, "seed", seed)
+            df.insert(1, "intervention_package", intervention_package)
+            df.insert(2, "delay", delay)
+            return df
+
+        summaries_df = pd.concat(
+            [
+                label_df(self.summary_baseline, seed = self.pars_baseline["rand_seed"], intervention_package = "baseline", delay = 0),
+                *[label_df(df, seed = self.pars_baseline["rand_seed"], intervention_package = interv, delay = d) for interv, dictres in self.summaries_counterfactual.items() for d, df in dictres.items()]
+            ]
+        )
+        return summaries_df
     
 class CounterfactualMultiSim(cvb.ParsObj):
 
@@ -193,12 +232,12 @@ class CounterfactualMultiSim(cvb.ParsObj):
         self.sims = sc.parallelize(run_indi_sim, self.sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
     
-    def run_counterfactual(self, intervention_package_key, detection_times, verbose = False, maxcpu = None, maxmem = None, interval = None):
+    def run_counterfactual(self, intervention_package_key, detection_times, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None):
         if not self.initialized:
             self.initialize()
 
-        def run_indi_sim(indi_sim, intervention_package_key, detection_times, verbose):
-            indi_sim.run_counterfactual(intervention_package_key, detection_times, verbose = verbose)
+        def run_indi_sim(indi_sim, intervention_package_key, detection_times, store_sims, verbose):
+            indi_sim.run_counterfactual(intervention_package_key, detection_times, store_sims = store_sims, verbose = verbose)
             return indi_sim
         
         if maxcpu is None:
@@ -208,15 +247,15 @@ class CounterfactualMultiSim(cvb.ParsObj):
         if interval is None:
             interval = self.interval
         
-        self.sims = sc.parallelize(run_indi_sim, self.sims, intervention_package_key = intervention_package_key, detection_times = detection_times, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        self.sims = sc.parallelize(run_indi_sim, self.sims, intervention_package_key = intervention_package_key, detection_times = detection_times, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
     
-    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, verbose = False, maxcpu = None, maxmem = None, interval = None):
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None):
         if not self.initialized:
             self.initialize()
 
-        def run_indi_sim(indi_sim, pathogen_index, intervention_package_keys, n_steps, verbose):
-            indi_sim.scan_detection_range(pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose)
+        def run_indi_sim(indi_sim, pathogen_index, intervention_package_keys, n_steps, store_sims, verbose):
+            indi_sim.scan_detection_range(pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, store_sims = store_sims, verbose = verbose)
             return indi_sim
         
         if maxcpu is None:
@@ -226,5 +265,9 @@ class CounterfactualMultiSim(cvb.ParsObj):
         if interval is None:
             interval = self.interval
         
-        self.sims = sc.parallelize(run_indi_sim, self.sims, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        self.sims = sc.parallelize(run_indi_sim, self.sims, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
         return
+    
+    def get_summaries_df(self):
+        summaries_df = pd.concat([sim.get_summaries_df() for sim in self.sims])
+        return summaries_df
