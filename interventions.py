@@ -2691,8 +2691,8 @@ class intervention_bucket(Intervention):
     A collection of interventions being deployed in an adaptive manner
 
     Args:
-        ttd  (int/arr):   the time to detection for the infection
         pathogen (int):   the index of the pathogen to change the beta of
+        strength (str):   'weak', 'medium' or 'strong'
         kwargs  (dict):   passed to Intervention()
 
     **Examples**::
@@ -2727,8 +2727,8 @@ class intervention_bucket(Intervention):
 
     def __make_event_dict(self, intvs):
         event_dict = {}
-        event_dict['start'] = {k:v for (k,v) in zip(intvs, ['start - ' + intv for intv in intvs])}
-        event_dict['stop'] = {k:v for (k,v) in zip(intvs, ['stop - ' + intv for intv in intvs])}
+        event_dict['start'] = {k:v for (k,v) in zip(intvs, ['START ' + intv for intv in intvs])}
+        event_dict['stop'] = {k:v for (k,v) in zip(intvs, ['STOP ' + intv for intv in intvs])}
         return event_dict
 
     def initialize(self, sim):
@@ -2759,6 +2759,7 @@ class intervention_bucket(Intervention):
     def apply(self, sim):
         # Always start with original betas and apply interventions with that as baseline
         betas = self.orig_betas.copy()
+
 
         for npi in self.npis:
             # Check for start/stop events at the current time and update status accordingly
