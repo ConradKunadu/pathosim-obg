@@ -187,6 +187,7 @@ class Sim(cvb.BaseSim):
         self.init_analyzers() # ...and the analyzers...
         self.init_test_scheduler() 
         self.init_behaviour_updater()
+        self.init_burden()
         self.validate_layer_pars() # Once the population is initialized, validate the layer parameters again
         self.set_seed() # Reset the random seed again so the random number stream is consistent
          
@@ -651,6 +652,15 @@ class Sim(cvb.BaseSim):
         
         pass
 
+    def init_burden(self):
+        '''
+        Initialize the burden object.
+        '''
+        if self["burden"] is not None:
+            self["burden"].initialize(self)
+        
+        pass
+
     def init_analyzers(self):
         ''' Initialize the analyzers '''
         if self._orig_pars and 'analyzers' in self._orig_pars:
@@ -1030,6 +1040,8 @@ class Sim(cvb.BaseSim):
                 
                 self.results[current_pathogen]['IgG_level'][t]       = np.array(people['IgG_level'])
 
+        if self["burden"] is not None:
+            self["burden"].update(self)
 
         # Calculate per-region statistics 
 

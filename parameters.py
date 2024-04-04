@@ -136,7 +136,9 @@ def make_pars(version=None, **kwargs):
     # Handle vaccine and variant parameters
     pars['vaccine_pars'] = {} # Vaccines that are being used; populated during initialization
     pars['vaccine_map']  = {} #Reverse mapping from number to vaccine key 
-      
+
+    # Burden statistics
+    pars['burden'] = None
 
     # Update with any supplied parameter values and generate things that need to be generated
     pars.update(kwargs)
