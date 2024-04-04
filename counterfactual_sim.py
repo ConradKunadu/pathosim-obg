@@ -176,7 +176,7 @@ class CounterfactualSim(cvb.ParsObj):
 class CounterfactualMultiSim(cvb.ParsObj):
 
     def __init__(self, pars=None, datafile=None, label=None, simfile=None,
-                popfile=None, people=None, version=None, intervention_packages=None, n_sims=1, maxcpu = 0.9, maxmem = 0.9, interval = 0.5, **kwargs):
+                popfile=None, people=None, version=None, intervention_packages=None, n_sims=1, maxcpu = 0.9, maxmem = 0.9, interval = 0.5, parallelize = True, **kwargs):
          # Set attributes
         self.pars          = pars
         self.datafile      = datafile # The name of the data file
@@ -190,7 +190,7 @@ class CounterfactualMultiSim(cvb.ParsObj):
         self.sims          = list()
         self.kwargs        = kwargs
 
-        self.set_opts_parallelization(maxcpu, maxmem, interval)
+        self.set_opts_parallelization(maxcpu, maxmem, interval, parallelize)
 
         self.initialized   = False    # Whether or not initialization is complete
         return
@@ -208,13 +208,14 @@ class CounterfactualMultiSim(cvb.ParsObj):
             self.initialized = True
         return
     
-    def set_opts_parallelization(self, maxcpu = 0.9, maxmem = 0.9, interval = 0.5):
+    def set_opts_parallelization(self, maxcpu = 0.9, maxmem = 0.9, interval = 0.5, parallelize = True):
         self.maxcpu = maxcpu
         self.maxmem = maxmem
         self.interval = interval
+        self.parallelize = parallelize
         return
 
-    def run_baseline(self, maxcpu = None, maxmem = None, verbose = False, interval = None):
+    def run_baseline(self, maxcpu = None, maxmem = None, verbose = False, interval = None, parallelize = None):
         if not self.initialized:
             self.initialize()
         
@@ -228,11 +229,16 @@ class CounterfactualMultiSim(cvb.ParsObj):
             maxmem = self.maxmem
         if interval is None:
             interval = self.interval
+        if parallelize is None:
+            parallelize = self.parallelize
 
-        self.sims = sc.parallelize(run_indi_sim, self.sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        if parallelize:
+            self.sims = sc.parallelize(run_indi_sim, self.sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        else:
+            self.sims = [run_indi_sim(indi_sim = sim, verbose = verbose) for sim in self.sims]
         return
     
-    def run_counterfactual(self, intervention_package_key, detection_times, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None):
+    def run_counterfactual(self, intervention_package_key, detection_times, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None, parallelize = None):
         if not self.initialized:
             self.initialize()
 
@@ -246,11 +252,16 @@ class CounterfactualMultiSim(cvb.ParsObj):
             maxmem = self.maxmem
         if interval is None:
             interval = self.interval
+        if parallelize is None:
+            parallelize = self.parallelize
         
-        self.sims = sc.parallelize(run_indi_sim, self.sims, intervention_package_key = intervention_package_key, detection_times = detection_times, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        if parallelize:
+            self.sims = sc.parallelize(run_indi_sim, self.sims, intervention_package_key = intervention_package_key, detection_times = detection_times, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        else:
+            self.sims = [run_indi_sim(indi_sim = sim, intervention_package_key = intervention_package_key, detection_times = detection_times, store_sims = store_sims, verbose = verbose) for sim in self.sims]
         return
     
-    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None):
+    def scan_detection_range(self, pathogen_index = 0, intervention_package_keys = None, n_steps = None, store_sims = True, verbose = False, maxcpu = None, maxmem = None, interval = None, parallelize = None):
         if not self.initialized:
             self.initialize()
 
@@ -264,8 +275,13 @@ class CounterfactualMultiSim(cvb.ParsObj):
             maxmem = self.maxmem
         if interval is None:
             interval = self.interval
+        if parallelize is None:
+            parallelize = self.parallelize
         
-        self.sims = sc.parallelize(run_indi_sim, self.sims, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        if parallelize:
+            self.sims = sc.parallelize(run_indi_sim, self.sims, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, store_sims = store_sims, verbose = verbose, maxcpu = maxcpu, maxmem = maxmem, interval = interval)
+        else:
+            self.sims = [run_indi_sim(indi_sim = sim, pathogen_index = pathogen_index, intervention_package_keys = intervention_package_keys, n_steps = n_steps, store_sims = store_sims, verbose = verbose) for sim in self.sims]
         return
     
     def get_summaries_df(self):
