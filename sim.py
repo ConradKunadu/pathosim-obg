@@ -1341,7 +1341,7 @@ class Sim(cvb.BaseSim):
             self.results[p] = sc.objdict(self.results[p]) # Convert results to a odicts/objdict to allow e.g. sim.results.diagnoses
 
         if restore_pars and self._orig_pars:
-            preserved = ['analyzers', 'interventions', 'surveillance', 'testing']
+            preserved = ['analyzers', 'interventions', 'surveillance', 'testing', 'burden']
             orig_pars_keys = list(self._orig_pars.keys()) # Get a list of keys so we can iterate over them
             for key in orig_pars_keys:
                 if key not in preserved:
@@ -1613,6 +1613,11 @@ class Sim(cvb.BaseSim):
 
         for key in ['cum_infections', 'cum_reinfections', 'cum_infectious','cum_symptomatic', 'cum_severe', 'cum_isolated', 'cum_critical','cum_recoveries', 'cum_deaths']:
             summary[key] = self.results[key][t]
+
+        if self["burden"] is not None:
+            for key in self["burden"].result_keys:
+                summary["cum_" + key] = self["burden"].results["cum_" + key][t]
+        
         # Update the stored state
         if update:
             self.summary = summary

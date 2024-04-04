@@ -7,33 +7,76 @@ __all__ = ['Burden', 'LifeExpectancy']
 class Burden:
 
     def __init__(self, life_expectancy):
-        self.yll = None # years of life lost
+        self.results = None 
+        self.result_keys = ["yll"]
         self.life_expectancy = life_expectancy
         self.initialized = False
         return
     
     def initialize(self, sim):
+        if self.initialized:
+            raise ValueError("Burden object already initialized.")
         self.n_days = sim['n_days']
-        self.yll = np.zeros(self.n_days+1)
+
+        # burden result metrics
+        self.results = {
+            "new_yll": np.zeros(self.n_days+1), # years of life lost
+            "proj_yll": np.zeros(self.n_days+1) # projected years of life lost
+        }
+        
         self.initialized = True
 
     def update(self, sim):
         if not self.initialized:
             raise ValueError("Burden object must be initialized before updating.")
-        ages = sim.people.age[sim.people.dead]
-        sexes = sim.people.sex[sim.people.dead]
-        yll_dead = [self.life_expectancy.get_remaining_years(age, sex) for age, sex in zip(ages, sexes)]
-        self.yll[sim.t] = sum(yll_dead)
+        
+        self.compute_results(sim)
+        self.compute_projections(sim)
+
+        # compute cumulative results
+        for key in self.result_keys:
+            self.results["cum_" + key] = np.cumsum(self.results["new_" + key]) + self.results["proj_" + key]
+
         return
     
-    def get_results(self):
-        if not self.initialized:
-            raise ValueError("Burden object must be initialized before getting results.")
-        results = {
-            "new_yll": self.yll,
-            "cum_yll": np.cumsum(self.yll)
-        }
-        return results
+    def compute_results(self, sim):
+        """
+        compute burden for today
+        """
+        died_today = sim.people.date_dead == sim.t
+        self.results["new_yll"][sim.t] = self.compute_yll(sim, died_today)
+
+        return
+    
+    def compute_projections(self, sim):
+        """
+        compute projected burden after today
+        """
+
+        # determine latest date of projections
+        if np.all(np.isnan(sim.people.date_dead)):
+            last_t = sim["n_days"]
+        else:    
+            last_t = int(np.nanmax(sim.people.date_dead))
+
+        # initialize projections
+        yll_dead = 0
+
+        # compute projections
+        for t in range(sim.t+1, last_t+1):
+            died_today = sim.people.date_dead == t
+            yll_dead += self.compute_yll(sim, died_today)
+
+        self.results["proj_yll"][sim.t] = yll_dead
+        return
+
+    def compute_yll(self, sim, inds):
+        if np.all(inds == False):
+            return 0
+        ages = sim.people.age[inds]
+        sexes = sim.people.sex[inds]
+        yll_dead = [self.life_expectancy.get_remaining_years(age, sex) for age, sex in zip(ages, sexes)]
+        return sum(yll_dead)
     
 class LifeExpectancy:
 
