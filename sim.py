@@ -1606,17 +1606,23 @@ class Sim(cvb.BaseSim):
 
         summary = {}
         
+        # summary for each pathogen
         for p in range(len(self.pathogens)):
             summary[p] = sc.objdict()
             for key in self.result_keys():
                 summary[p][key] = self.results[p][key][t]
+         
+            if self["burden"] is not None:
+                for key in self["burden"].result_keys:
+                    summary[p]["cum_" + key] = self["burden"].results[p]["cum_" + key][t]
 
+        # summary for all pathogens
         for key in ['cum_infections', 'cum_reinfections', 'cum_infectious','cum_symptomatic', 'cum_severe', 'cum_isolated', 'cum_critical','cum_recoveries', 'cum_deaths']:
             summary[key] = self.results[key][t]
 
         if self["burden"] is not None:
             for key in self["burden"].result_keys:
-                summary["cum_" + key] = self["burden"].results["cum_" + key][t]
+                summary["cum_" + key] = np.nansum([summary[p]["cum_" + key] for p in range(len(self.pathogens))])
         
         # Update the stored state
         if update:

@@ -7,7 +7,7 @@ __all__ = ['Burden', 'LifeExpectancy']
 class Burden:
 
     def __init__(self, life_expectancy):
-        self.results = None 
+        self.results = dict()
         self.result_keys = ["yll"]
         self.life_expectancy = life_expectancy
         self.initialized = False
@@ -19,10 +19,10 @@ class Burden:
         self.n_days = sim['n_days']
 
         # burden result metrics
-        self.results = {
+        self.results = {p: {
             "new_yll": np.zeros(self.n_days+1), # years of life lost
             "proj_yll": np.zeros(self.n_days+1) # projected years of life lost
-        }
+        } for p in range(len(sim.pathogens))}
         
         self.initialized = True
 
@@ -34,8 +34,9 @@ class Burden:
         self.compute_projections(sim)
 
         # compute cumulative results
-        for key in self.result_keys:
-            self.results["cum_" + key] = np.cumsum(self.results["new_" + key]) + self.results["proj_" + key]
+        for p in range(len(sim.pathogens)):
+            for key in self.result_keys:
+                self.results[p]["cum_" + key] = np.cumsum(self.results[p]["new_" + key]) + self.results[p]["proj_" + key]
 
         return
     
@@ -43,8 +44,9 @@ class Burden:
         """
         compute burden for today
         """
-        died_today = sim.people.date_dead == sim.t
-        self.results["new_yll"][sim.t] = self.compute_yll(sim, died_today)
+        for p in range(len(sim.pathogens)):
+            died_today = sim.people.date_p_dead[p] == sim.t
+            self.results[p]["new_yll"][sim.t] = self.compute_yll(sim, died_today)
 
         return
     
@@ -52,22 +54,22 @@ class Burden:
         """
         compute projected burden after today
         """
+        for p in range(len(sim.pathogens)):
+            # determine latest date of projections
+            if np.all(np.isnan(sim.people.date_p_dead[p])):
+                last_t = sim["n_days"]
+            else:    
+                last_t = int(np.nanmax(sim.people.date_p_dead[p]))
 
-        # determine latest date of projections
-        if np.all(np.isnan(sim.people.date_dead)):
-            last_t = sim["n_days"]
-        else:    
-            last_t = int(np.nanmax(sim.people.date_dead))
+            # initialize projections
+            yll_dead = 0
 
-        # initialize projections
-        yll_dead = 0
+            # compute projections
+            for t in range(sim.t+1, last_t+1):
+                died_today = sim.people.date_p_dead[p] == t
+                yll_dead += self.compute_yll(sim, died_today)
 
-        # compute projections
-        for t in range(sim.t+1, last_t+1):
-            died_today = sim.people.date_dead == t
-            yll_dead += self.compute_yll(sim, died_today)
-
-        self.results["proj_yll"][sim.t] = yll_dead
+            self.results[p]["proj_yll"][sim.t] = yll_dead
         return
 
     def compute_yll(self, sim, inds):
