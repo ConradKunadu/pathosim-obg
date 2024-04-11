@@ -74,8 +74,8 @@ class CounterfactualSim(cvb.ParsObj):
     def initialize(self):
         # initialize baseline sim
         self.sim_baseline = inf.Sim(self.pars)
+        self.pars_baseline = sc.dcp(self.sim_baseline.pars)
         self.sim_baseline.initialize()
-        self.pars_baseline = self.sim_baseline._orig_pars
         
         # store pop file
         # create temporary file using tempfile
