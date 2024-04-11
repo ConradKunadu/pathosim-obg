@@ -1603,6 +1603,9 @@ class Sim(cvb.BaseSim):
         if require_run and not self.results_ready:
             errormsg = 'Simulation not yet run'
             raise RuntimeError(errormsg)
+        
+        if self["burden"] is not None:
+            self["burden"].compute_projections(self)
 
         summary = {}
         
@@ -1614,7 +1617,7 @@ class Sim(cvb.BaseSim):
          
             if self["burden"] is not None:
                 for key in self["burden"].result_keys:
-                    summary[p]["cum_" + key] = self["burden"].results[p]["cum_" + key][t]
+                    summary[p]["tot_" + key] = self["burden"].results[p]["cum_" + key][t] + self["burden"].projections[p]["proj_" + key]
 
         # summary for all pathogens
         for key in ['cum_infections', 'cum_reinfections', 'cum_infectious','cum_symptomatic', 'cum_severe', 'cum_isolated', 'cum_critical','cum_recoveries', 'cum_deaths']:
@@ -1622,7 +1625,7 @@ class Sim(cvb.BaseSim):
 
         if self["burden"] is not None:
             for key in self["burden"].result_keys:
-                summary["cum_" + key] = np.nansum([summary[p]["cum_" + key] for p in range(len(self.pathogens))])
+                summary["tot_" + key] = np.nansum([summary[p]["tot_" + key] for p in range(len(self.pathogens))])
         
         # Update the stored state
         if update:
