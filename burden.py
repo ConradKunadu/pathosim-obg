@@ -88,7 +88,7 @@ class Burden:
     def compute_yll(self, sim, t, p = 0):
 
         if self.life_expectancy is None:
-            return np.nan()
+            return np.nan
 
         inds = sim.people.date_p_dead[p] == t
         if np.all(inds == False):
@@ -100,8 +100,8 @@ class Burden:
     
     def compute_hrql_loss(self, sim, t, p):
 
-        if any([v is None for v in sim.pathogens[p].hrql_loss.values()]):
-            return np.nan()
+        if sim.pathogens[p].hrql_loss is None or any([v is None for v in sim.pathogens[p].hrql_loss.values()]):
+            return np.nan
 
         before_symptomatic = (t < sim.people.date_p_symptomatic[p])
         before_severe = (t < sim.people.date_p_severe[p])
