@@ -19,9 +19,10 @@ class Pathogen(sc.prettyobj):
         self.pop_infected = pop_infected #Number of initial infections
         self.variants = [] #variants excluding wild type 
 
-
         self.make_default_pathogen_pars()
         self.absolute_prognoses = None
+
+        self.hrql_loss = None
 
         return
 
@@ -172,6 +173,30 @@ class Pathogen(sc.prettyobj):
 
     def configure_imports(self, imports = 0):
         self.n_imports = imports
+
+    def configure_hrql_loss(self, loss_symptomatic = None, loss_severe = None, loss_critical = None):
+        '''
+        Function to configure the health-related quality of life loss per day for states 'symptomatic', 'severe', and 'critical'.
+
+        Parameters:
+            loss_symptomatic(float) = health-related quality of life loss per day for symptomatic state
+            loss_severe(float) = health-related quality of life loss per day for severe state
+            loss_critical(float) = health-related quality of life loss per day for critical state
+        '''
+        if self.hrql_loss is None:
+            self.hrql_loss = {
+            'symptomatic': None,
+            'severe': None,
+            'critical': None
+            }
+
+        if loss_symptomatic is not None:
+            self.hrql_loss['symptomatic'] = loss_symptomatic
+        if loss_severe is not None:
+            self.hrql_loss['severe'] = loss_severe
+        if loss_critical is not None:
+            self.hrql_loss['critical'] = loss_critical
+        return
     #endregion
 
     #------------------ DEFAULT PATHOGEN PARAMETRS, ALL ARE TO POSSIBLY OVERRIDE IN DERIVED CLASS ----------------#
@@ -377,7 +402,6 @@ class Pathogen(sc.prettyobj):
             self.pathogen_index = 0
             self.initialized = False
             self.base_pathogen = base_pathogen
-
             
             self.parse(variant=variant, label=label) # Variants can be defined in different ways: process these here
             return
