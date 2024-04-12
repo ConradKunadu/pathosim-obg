@@ -24,7 +24,7 @@ from . import stratify as strat
 from abc import ABC, abstractmethod
 
 
-__all__ = ['FixedEvent', 'DelayedTrigger', 'RatioTrigger', 'RateTrigger']
+__all__ = ['FixedEvent', 'DelayedTrigger', 'RatioEvent', 'RateEvent']
 
 
 # TODO consider making factories for events
@@ -48,6 +48,10 @@ class Event(ABC):
 
     @abstractmethod
     def update(self):
+        pass
+
+    @abstractmethod
+    def reset(self):
         pass
 
 
@@ -98,6 +102,10 @@ class FixedEvent(Event):
             self.add_event(sim.events, self.t_event)
             self.initialized = True
 
+    def reset(self):
+        self.initialized = False
+
+
 
 class DelayedTrigger(StartStopEvent):
     """
@@ -114,22 +122,25 @@ class DelayedTrigger(StartStopEvent):
             if self.stop_delay is not None:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
 
+    def reset(self):
+        return
 
 
-class RatioTrigger(StartStopEvent):
+
+class RatioEvent(StartStopEvent):
     """
-    Triggers a start (and stop) event at a certain ratio of infections of the alive population
+    Schedules a start (and stop) event at a certain ratio of infections of the susceptible population
 
     TODO: ratio by region
     TODO: allow to adjust if counting e.g. infectious, exposed or symptomatic
     TODO: allow for multiple pathogens
     """
 
-    def __init__(self, name, start_delay=0, stop_delay=0, start_threshold=1, stop_threshold=None, active=False):
+    def __init__(self, name, start_delay=0, stop_delay=0, start_threshold=1, stop_threshold=0):
         super().__init__(name, start_delay, stop_delay)
         self.start_threshold = start_threshold
         self.stop_threshold = stop_threshold
-        self.active = active
+        self.active = False
         if stop_threshold > start_threshold:
             raise Exception("Stop threshold has been defined above start threshold")
 
@@ -153,22 +164,25 @@ class RatioTrigger(StartStopEvent):
             if ratio < self.stop_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
                 self.active = False
+
+    def reset(self):
+        self.active = False
         
         
 
-class RateTrigger(StartStopEvent):
+class RateEvent(StartStopEvent):
     """
-    Triggers a start (and stop) event at a certain rate of increase in cases
+    Schedules a start (and stop) event at a certain rate of increase in cases
 
     TODO: rate by region
     TODO: allow for multiple pathogens
     """
 
-    def __init__(self, name, start_delay=0, stop_delay=0, start_threshold=1, stop_threshold=None, active=False):
+    def __init__(self, name, start_delay=0, stop_delay=0, start_threshold=1, stop_threshold=None):
         super().__init__(name, start_delay, stop_delay)
         self.start_threshold = start_threshold
         self.stop_threshold = stop_threshold
-        self.active = active
+        self.active = False
         if stop_threshold > start_threshold:
             raise Exception("Stop threshold has been defined above start threshold")
 
@@ -192,3 +206,6 @@ class RateTrigger(StartStopEvent):
             if ratio < self.stop_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
                 self.active = False
+
+    def reset(self):
+        self.active = False

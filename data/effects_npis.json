@@ -34,7 +34,7 @@
 		"w": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
 		"c": {"weak": 1.0, "medium": 1.0, "strong": 1.0}
 	},
-	"office closure": {
+	"home office": {
 		"a": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
 		"h": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
 		"s": {"weak": 1.0, "medium": 1.0, "strong": 1.0},
