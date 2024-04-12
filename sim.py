@@ -28,6 +28,7 @@ from . import background_ILI as bkg_ILI
 from . import symptoms as symptoms
 from . import people as cvppl
 from . import pathogens as pat
+from . import events as ev
 from .settings import options as cvo
 from. import stratify as strat
 from. import pathogen_interactions as p_int
@@ -86,6 +87,8 @@ class Sim(cvb.BaseSim):
         self.TestScheduler = None 
         self.active_population_surveillance = False # Whether or not to keep track of peoples IgG levels over the course of a simulation 
         self.aps_program = None # An active population sampling object 
+        self.events = None # Events that happen during the course of the simulation, e.g. stop/start of interventions
+        self.event_dict = None # Currently only set by the intervention_bucket subclass of Intervention
 
         # Make default parameters (using values from parameters.py)
         default_pars = cvpar.make_pars(version=version) # Start with default pars
@@ -181,6 +184,7 @@ class Sim(cvb.BaseSim):
         if self.pars['enable_stratifications']:
             self.init_stratifications()
         self.init_infections()   
+        self.init_events()
         self.init_interventions()  # Initialize the interventions...
         self.init_surveillance()
         self.init_testobjs() # TODO: Ritchie Toggle. Andrew, I don't think any toggling needs to done here, since 'process_testobj_pars' is toggled. 
@@ -574,6 +578,21 @@ class Sim(cvb.BaseSim):
 
         return self
 
+    def init_events(self, **kwargs):
+        ''' Initialize and validate the events '''
+
+        # Initialization
+        if self._orig_pars and 'events' in self._orig_pars:
+            self['events'] = self._orig_pars.pop('events') # Restore
+
+        # Initialize the events list
+        if self.events is None:
+            self.events = [[] for x in range(self['n_days']+1)]
+        else:
+            raise Exception("Events list has already been initialized")
+
+        return
+
     def init_interventions(self, popdict=None, init_infections=False, reset=False, verbose=None, **kwargs):
         ''' Initialize and validate the interventions '''
 
@@ -894,6 +913,10 @@ class Sim(cvb.BaseSim):
                 self.results[0]['cum_diagnoses_custom'][t] += sum(self.results[0]['new_diagnoses_custom'][:t])
 
         
+        # Apply events
+        for event in self['events']:
+            event.update(self)
+
         # Apply interventions
         for i,intervention in enumerate(self['interventions']):
             intervention(self) # If it's a function, call it directly

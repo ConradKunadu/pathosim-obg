@@ -9,6 +9,7 @@ import scipy as sp
 import pylab as pl
 import sciris as sc
 import inspect
+import json
 import datetime as dt
 from . import misc as cvm
 from . import utils as cvu
@@ -221,7 +222,7 @@ def InterventionDict(which, pars):
 
 #%% Generic intervention classes
 
-__all__ = ['InterventionDict', 'Intervention', 'dynamic_pars', 'sequence']
+__all__ = ['InterventionDict', 'Intervention', 'dynamic_pars', 'sequence', 'intervention_bucket']
 
 
 class Intervention:
@@ -2684,3 +2685,116 @@ class historical_wave(Intervention):
 
         return
 
+
+class intervention_bucket(Intervention):
+    '''
+    A collection of interventions being deployed in an adaptive manner
+
+    Args:
+        pathogen (int):   the index of the pathogen to change the beta of
+        strength (str):   'weak', 'medium' or 'strong'
+        kwargs  (dict):   passed to Intervention()
+
+    **Examples**::
+
+        xxx
+    '''
+
+    def __init__(self, pathogen = 0, strength = 'medium', **kwargs):
+        super().__init__(**kwargs) # Initialize the Intervention object
+        self.orig_betas = None
+        self.pathogen = pathogen # TODO the intervention bucket still only admits one pathogen
+        self.npis = None # List of npis contained in the intervention bucket
+        self.therapeutics = None # List of therapeutics contained in the intervention bucket
+        self.deployed = None # Dictionary having interventions as keys and (bool) whether they are active as value
+        self.strength = strength # Can take values 'weak', 'medium' or 'strong'
+        self.effects_npis = None # Dictionary containing npi effect sizes. Indexed by effects[intervention][layer][strength]
+        self.effects_therapeutics = None # Dictionary containing therapeutics effect sizes. Indexed by effects[intervention][layer][strength]
+        return
+
+    def __read_json(self, path):
+        data = None
+        try:
+            with open(path) as json_file:
+                try:
+                    data = json.load(json_file)
+                except json.decoder.JSONDecodeError as e:
+                    print(f'Error decoding JSON: {e}')
+        except IOError:
+            print("Could not read file:", path)
+        return data
+
+
+    def __make_event_dict(self, intvs):
+        event_dict = {}
+        event_dict['start'] = {k:v for (k,v) in zip(intvs, ['START ' + intv for intv in intvs])}
+        event_dict['stop'] = {k:v for (k,v) in zip(intvs, ['STOP ' + intv for intv in intvs])}
+        return event_dict
+
+    def initialize(self, sim):
+        ''' Store beta and load up npis and therapeutics '''
+        super().initialize()
+        self.orig_betas = sim['beta_layer'].copy() # NB this is dictionary with layers as keys and beta per layer as value
+        self.effects_npis = self.__read_json('pathosim/data/effects_npis.json') # The filepath should probably be given in some other way
+        self.effects_therapeutics = self.__read_json('pathosim/data/effects_therapeutics.json')
+        self.npis = list(self.effects_npis.keys())
+        self.therapeutics = list(self.effects_therapeutics.keys())
+
+        # Make the event dictionary
+        if sim.event_dict is None:
+            sim.event_dict = self.__make_event_dict(self.npis + self.therapeutics)
+        else:
+            print("The event dictionary has already been initialized")
+
+        # Initialize all interventions in the bucket as inactive
+        self.deployed = {}
+        for npi in self.npis:
+            self.deployed[npi] = False
+        for therapeutic in self.therapeutics:
+            self.deployed[therapeutic] = False
+
+        return
+
+
+    def apply(self, sim):
+        # Always start with original betas and apply interventions with that as baseline
+        betas = self.orig_betas.copy()
+
+
+        for npi in self.npis:
+            # Check for start/stop events at the current time and update status accordingly
+            if sim.event_dict['start'][npi] in sim.events[sim.t]:
+                self.deployed[npi] = True
+            elif sim.event_dict['stop'][npi] in sim.events[sim.t]:
+                self.deployed[npi] = False
+
+        for therapeutic in self.therapeutics:
+            # Check for start/stop events at the current time and update status accordingly
+            if sim.event_dict['start'][therapeutic] in sim.events[sim.t]:
+                self.deployed[therapeutic] = True
+            elif sim.event_dict['stop'][therapeutic] in sim.events[sim.t]:
+                self.deployed[therapeutic] = False
+
+        for npi in self.npis:
+            if self.deployed[npi]:   
+                for lkey in sim['beta_layer'].keys():
+                    # If layer is affected by intervention, modify beta
+                    betas[lkey] = betas[lkey] * self.effects_npis[npi][lkey][self.strength]
+
+        for therapeutic in self.therapeutics:
+            if self.deployed[npi]:
+                for lkey in sim['beta_layer'].keys():
+                    # If layer is affected by intervention, modify beta
+                    betas[lkey] = betas[lkey] * self.effects_therapeutics[therapeutic][lkey][self.strength]
+                
+        for lkey in sim['beta_layer'].keys():
+            try:
+                sim['beta_layer'][lkey] = betas[lkey]
+            except KeyError as e:
+                print("The following layer key caused an issue:", lkey)
+
+
+
+    def plot_intervention(self, sim, ax=None, **kwargs):
+        # The intervention bucket will have to redefine the plot function
+        return
