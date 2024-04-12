@@ -135,17 +135,22 @@ class RatioTrigger(StartStopEvent):
 
     # TODO one should probably make sure that a stop event is not placed before a start event by 
     # having conditions on start_delay and stop_delay
-    # This is currently not working. Figure out how to properly read the current status from sim.results
     def update(self, sim):
+        n_susc = sim.results[0]['n_susceptible'][sim.t-1]
         if not self.active:
-            above = (sim.results[0]['n_infectious'][:]/sim.results[0]['n_alive'][:]) >= self.start_threshold
-            # If ratio is above start_threshold, start event
-            if above:
+            if n_susc == 0:
+                ratio = 0
+            else:
+                ratio = sim.results[0]['n_infectious'][sim.t-1] / n_susc
+            if ratio > self.start_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
+                self.active = True
         else:
-            below = (sim.results[0]['n_infectious'][:]/sim.results[0]['n_alive'][:]) <= self.stop_threshold
-            # If ratio is below stop_threshold, stop event
-            if below:
+            if n_susc == 0:
+                ratio = 1
+            else:
+                ratio = sim.results[0]['n_infectious'][sim.t-1] / n_susc
+            if ratio < self.stop_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
                 self.active = False
         
@@ -169,16 +174,21 @@ class RateTrigger(StartStopEvent):
 
     # TODO one should probably make sure that a stop event is not placed before a start event by 
     # having conditions on start_delay and stop_delay
-    # This is currently not working. Figure out how to properly read the current status from sim.results
     def update(self, sim):
-        if self.active:
-            above = (sim.results[0]['new_infections'][:]/sim.results[0]['n_susceptible'][:]) >= self.start_threshold
-            # If ratio is above start_threshold, start event
-            if above:
+        n_susc = sim.results[0]['n_susceptible'][sim.t-1]
+        if not self.active:
+            if n_susc == 0:
+                ratio = 0
+            else:
+                ratio = sim.results[0]['new_infections'][sim.t - 1] / n_susc
+            if ratio > self.start_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
+                self.active = True
         else:
-            below = (sim.results[0]['new_infections'][:]/sim.results[0]['n_susceptible'][:]) <= self.stop_threshold
-            # If ratio is below stop_threshold, stop event
-            if below:
+            if n_susc == 0:
+                ratio = 1
+            else:
+                ratio = sim.results[0]['new_infections'][sim.t - 1] / n_susc
+            if ratio < self.stop_threshold:
                 self.add_stop_event(sim.events, sim.t+self.stop_delay)
                 self.active = False
