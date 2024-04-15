@@ -12,6 +12,7 @@ from . import base as cvb
 from . import version as cvv
 from . import defaults as cvd
 from . import parameters as cvpar
+from . import events as ev
 from collections import defaultdict
 import tempfile
 import pandas as pd
@@ -120,7 +121,8 @@ class CounterfactualSim(cvb.ParsObj):
             sim_cf = inf.Sim(
                 sc.dcp(self.pars_baseline), # deepcopy is necessary because Sim.run() modifies the parameters
                 popfile=self.people_file_temp,
-                interventions = sc.dcp(self.intervention_packages[intervention_package_key])
+                interventions = sc.dcp(self.intervention_packages[intervention_package_key]),
+                detection_events = [ev.FixedEvent('detection', detection_time)]
                 )
             
             # run the counterfactual simulation

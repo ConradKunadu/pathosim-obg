@@ -92,10 +92,16 @@ class FixedEvent(Event):
     Event that is set for a fixed, pre-defined time
     """
 
-    def __init__(self, name, t_event):
+    def __init__(self, name, t_event=0):
         super().__init__(name)
         self.t_event = t_event
         self.initialized = False
+
+    def get_t(self):
+        return self.t_event
+
+    def set_t(self, t):
+        self.t_event = t
 
     def update(self, sim):
         if not self.initialized:
@@ -154,7 +160,7 @@ class RatioEvent(StartStopEvent):
             else:
                 ratio = sim.results[0]['n_infectious'][sim.t-1] / n_susc
             if ratio > self.start_threshold:
-                self.add_stop_event(sim.events, sim.t+self.stop_delay)
+                self.add_start_event(sim.events, sim.t+self.stop_delay)
                 self.active = True
         else:
             if n_susc == 0:
@@ -196,7 +202,7 @@ class RateEvent(StartStopEvent):
             else:
                 ratio = sim.results[0]['new_infections'][sim.t - 1] / n_susc
             if ratio > self.start_threshold:
-                self.add_stop_event(sim.events, sim.t+self.stop_delay)
+                self.add_start_event(sim.events, sim.t+self.stop_delay)
                 self.active = True
         else:
             if n_susc == 0:

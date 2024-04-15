@@ -90,7 +90,6 @@ class Sim(cvb.BaseSim):
         self.events = None # Events that happen during the course of the simulation, e.g. stop/start of interventions
         self.event_dict = None # Currently only set by the intervention_bucket subclass of Intervention
         self.detected = False
-        self.detection_events = []
 
         # Make default parameters (using values from parameters.py)
         default_pars = cvpar.make_pars(version=version) # Start with default pars
@@ -583,14 +582,17 @@ class Sim(cvb.BaseSim):
     def init_events(self, **kwargs):
         ''' Initialize and validate the events '''
 
-        # Initialization
+        # Initialization of events
         if self._orig_pars and 'events' in self._orig_pars:
-            events = self._orig_pars.pop('events')  # Restore
-            for event in events:                    # Reset all events
+            self['events'] = self._orig_pars.pop('events')  # Restore
+            for event in self['events']:                    # Reset all events
                 event.reset()
-            self['events'] = [event for event in events if event.get_event_name() != 'detection']
-            # Identify the detection event(s) and move them to the detection_event list
-            self.detection_events = [event for event in events if event.get_event_name() == 'detection'] 
+
+        # Initialization of detection events
+        if self._orig_pars and 'detection_events' in self._orig_pars:
+            self['detection_events'] = self._orig_pars.pop('detection_events')
+            for event in self['detection_events']:
+                event.reset()
 
         # Initialize the events list
         if self.events is None:
@@ -922,7 +924,7 @@ class Sim(cvb.BaseSim):
         
         # Run detection events
         if not self.detected:
-            for event in self.detection_events:
+            for event in self['detection_events']:
                 event.update(self)
             # Check for detection
             if 'detection' in self.events[t]:

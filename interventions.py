@@ -2724,7 +2724,6 @@ class intervention_bucket(Intervention):
             print("Could not read file:", path)
         return data
 
-
     def __make_event_dict(self, intvs):
         event_dict = {}
         event_dict['start'] = {k:v for (k,v) in zip(intvs, ['START ' + intv for intv in intvs])}
@@ -2760,7 +2759,6 @@ class intervention_bucket(Intervention):
         # Always start with original betas and apply interventions with that as baseline
         betas = self.orig_betas.copy()
 
-
         for npi in self.npis:
             # Check for start/stop events at the current time and update status accordingly
             if sim.event_dict['start'][npi] in sim.events[sim.t]:
@@ -2792,7 +2790,6 @@ class intervention_bucket(Intervention):
                 sim['beta_layer'][lkey] = betas[lkey]
             except KeyError as e:
                 print("The following layer key caused an issue:", lkey)
-
 
 
     def plot_intervention(self, sim, ax=None, **kwargs):

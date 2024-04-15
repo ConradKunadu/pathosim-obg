@@ -16,16 +16,16 @@ my_intervention = inf.intervention_bucket()
 detection_event = inf.FixedEvent('detection', 30)
 delayed_event1 = inf.DelayedTrigger('mask mandate', start_delay=0, stop_delay=50, trigger_event='detection')
 delayed_event2 = inf.DelayedTrigger('quarantine', start_delay=10, stop_delay=20, trigger_event='detection')
+ratio_event = inf.RatioEvent('social distancing', start_delay=1, stop_delay=7, start_threshold=0.02, stop_threshold=0.01)
 
-# The RatioTrigger and RateTrigger do not currently work
-ratio_event = inf.RatioTrigger('social distancing', start_delay=1, stop_delay=7, start_threshold=0.02, stop_threshold=0.01)
-
-all_events = [detection_event, delayed_event1, delayed_event2]
+all_events = [delayed_event1, delayed_event2, ratio_event]
 
 #Initialize and run the simulation
-sim = inf.Sim(pop_size = pop_size, pathogens = [MyNewPathogen], interventions = [my_intervention], events = all_events, n_days = 365)
+sim = inf.Sim(pop_size = pop_size, pathogens = [MyNewPathogen], interventions = [my_intervention], events = all_events, detection_events = [detection_event], n_days = 365)
 
 #sim.events = {40:['detection']}
 
 sim.run() 
 sim.plot() 
+
+print(sim.events)
