@@ -23,9 +23,5 @@ all_events = [delayed_event1, delayed_event2, ratio_event]
 #Initialize and run the simulation
 sim = inf.Sim(pop_size = pop_size, pathogens = [MyNewPathogen], interventions = [my_intervention], events = all_events, detection_events = [detection_event], n_days = 365)
 
-#sim.events = {40:['detection']}
-
 sim.run() 
-sim.plot() 
-
-print(sim.events)
+sim.plot()
