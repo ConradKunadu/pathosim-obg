@@ -117,6 +117,7 @@ def make_pars(version=None, **kwargs):
 
     # Events and interventions
     pars['events'] = []          # The events present in this simulation; populated by the user
+    pars['detection_events']=[]  # The detection events present in this simulation; populated by the user
     pars['interventions'] = []   # The interventions present in this simulation; populated by the user
     pars['surveillance'] = []    # The surveillance systems present in this simualtion; populated by the user
     pars['testing'] = []         # The testing systems present in this simualtion; populated by the user. These can be populated externally, or internally by supplying a parameter dictionary. 
