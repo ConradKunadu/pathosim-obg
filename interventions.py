@@ -2742,8 +2742,6 @@ class intervention_bucket(Intervention):
         # Make the event dictionary
         if sim.event_dict is None:
             sim.event_dict = self.__make_event_dict(self.npis + self.therapeutics)
-        else:
-            print("The event dictionary has already been initialized")
 
         # Initialize all interventions in the bucket as inactive
         self.deployed = {}
