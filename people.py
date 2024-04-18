@@ -927,7 +927,7 @@ class People(cvb.BasePeople):
         if len(inds) == 0:  
             return 0
          
-        inds = np.intersect1d(inds, np.logical_not(self.is_coinfected).nonzero()[0]) #keep inds susceptible and not co-infected 
+        inds = inds[np.in1d(inds,np.logical_not(self.is_coinfected).nonzero()[0])] #keep inds susceptible and not co-infected 
         # Remove duplicates
         inds, unique = np.unique(inds, return_index=True)
 
@@ -954,7 +954,7 @@ class People(cvb.BasePeople):
                 assert len(np.intersect1d(inds,self.p_exposed[i].nonzero()[0])) == 0
                 continue
             indices_infected = self.p_exposed[i].nonzero()[0]  #indices with pathogen index i
-            indices_infected = np.intersect1d(indices_infected, inds)
+            indices_infected = indices_infected[np.in1d(indices_infected, inds)]
               
             co_infected_pathogen_inds[indices_infected] = i #They are co-infected with pathogens[i]
 
